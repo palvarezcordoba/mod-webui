@@ -505,9 +505,11 @@ class Regenerator(object):
             hname = s.host_name
             s.host = self.hosts.find_by_name(hname)
             if s.host:
-                old_s = s.host.find_service_by_name(s.service_description)
-                if old_s is not None:
-                    s.host.services.remove(old_s)
+
+                for service in s.host.services:
+                    if getattr(service, 'service_description', '__UNNAMED_SERVICE__') == s.service_description:
+                        s.host.services.remove(service)
+                        break
                 s.host.services.append(s)
             else:
                 logger.warning("No host %s for service: %s", hname, s)
