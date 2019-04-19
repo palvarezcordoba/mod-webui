@@ -53,7 +53,7 @@
     "loggers": {
         "alignak": {
             "level": "INFO",
-            "handlers": ["daemons"],
+            "handlers": ["daemons", "color_console"],
             "propagate": "no"
         },
         "monitoring-log": {
