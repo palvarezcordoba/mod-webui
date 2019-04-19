@@ -1354,10 +1354,7 @@ class Regenerator(object):
             # one a minute
             if time.time() - self.last_need_data_send > 60 and self.from_q is not None:
                 logger.debug("I ask the broker for instance id data: %s", c_id)
-                if ALIGNAK:
-                    msg = Message(_type='NeedData', data={'full_instance_id': c_id}, source='WebUI')
-                else:
-                    msg = Message(id=0, type='NeedData', data={'full_instance_id': c_id}, source='WebUI')
+                msg = Message(_type='NeedData', data={'full_instance_id': c_id}, source='WebUI')
                 self.from_q.put(msg)
                 self.last_need_data_send = time.time()
             return
