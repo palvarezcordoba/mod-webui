@@ -88,7 +88,7 @@ def get_page(cmd=None):
 
     now = subsNOW()
     elts = cmd.split('/')
-    cmd_name = elts[0]
+    cmd_name = elts[0].lower()
     cmd_args = elts[1:]
     logger.info("[actions] got command: %s with args: %s.", cmd_name, cmd_args)
 

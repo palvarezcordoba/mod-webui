@@ -81,9 +81,7 @@ from .submodules.graphs import GraphsMetaModule
 from .submodules.helpdesk import HelpdeskMetaModule
 
 
-ALIGNAK = True
-
-WEBUI_VERSION = "2.7.2"
+WEBUI_VERSION = "3.0.0"
 WEBUI_COPYRIGHT = "2009-2019"
 WEBUI_LICENSE = "License GNU AGPL as published by the FSF, minimum version 3 of the License."
 
@@ -92,9 +90,9 @@ root_app = bottle.default_app()
 webui_app = bottle.Bottle()
 
 # Debug
-SHINKEN_UI_DEBUG = False
-if os.environ.get('SHINKEN_UI_DEBUG', None):
-    SHINKEN_UI_DEBUG = True
+ALIGNAK_UI_DEBUG = False
+if os.environ.get('ALIGNAK_UI_DEBUG', None) or os.environ.get('SHINKEN_UI_DEBUG', None):
+    ALIGNAK_UI_DEBUG = True
     bottle.debug(True)
 # bottle.debug(True)
 # # Do not log the urllib3 requests on the console
@@ -155,56 +153,28 @@ class WebuiBroker(BaseModule):
     def __init__(self, modconf):
         BaseModule.__init__(self, modconf)
 
-        if SHINKEN_UI_DEBUG:
+        if ALIGNAK_UI_DEBUG:
             logger.warning("Using Bottle Web framework in debug mode.")
 
-        # For Alignak ModulesManager...
-        # ---
-        self.alignak = False
-        if ALIGNAK:
-            self.alignak = True
-            # A daemon must have these properties
-            self.type = 'webui'
-            self.name = 'webui'
+        # A daemon must have these properties
+        self.type = 'webui'
+        self.name = 'webui'
 
-            # Configure Alignak Arbiter API endpoint
-            self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
-            self.alignak_check_period = int(getattr(modconf, 'alignak_check_period', '10'))
-            self.alignak_livestate = {}
-            self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
-            self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
-                                                                  self.alignak_events_count)))
-
-            # # Shinken logger configuration
-            # log_console = (getattr(modconf, 'log_console', '0') == '1')
-            # if not log_console:
-            #     # Remove the forced color log handler
-            #     for hdlr in logger.handlers:
-            #         if isinstance(hdlr, ColorStreamHandler):
-            #             logger.removeHandler(hdlr)
-            #
-            # log_level = getattr(modconf, 'log_level', 'INFO')
-            # log_file = getattr(modconf, 'log_file', '/var/log/alignak/alignak-webui.log')
-            # try:
-            #     logger.register_local_log(log_file, log_level)
-            # except IOError:
-            #     cfg_log_file = log_file
-            #     log_file = '/tmp/alignak-webui.log'
-            #     logger.register_local_log(log_file, log_level)
-            #     logger.error("configured log_file is incorrect: %s. "
-            #                  "Will log to %s", cfg_log_file, log_file)
-            # logger.set_human_format()
-            # logger.setLevel(log_level)
-            #
-            # I may have some modules in my configuration or not...
-            self.module_type = getattr(modconf, 'module_type', 'unset')
-            self.module_name = getattr(modconf, 'module_name', 'unset')
-            self.modules = getattr(modconf, 'modules', [])
-            if self.modules and not self.modules[0]:
-                self.modules = []
-            # todo: set default directory for the modules directory
-            self.modules_dir = getattr(modconf, 'modules_dir', '/var/lib/shinken/modules')
-            logger.info("modules: %s in %s", self.modules, self.modules_dir)
+        # Configure Alignak Arbiter API endpoint
+        self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
+        self.alignak_check_period = int(getattr(modconf, 'alignak_check_period', '10'))
+        self.alignak_livestate = {}
+        self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
+        self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
+                                                              self.alignak_events_count)))
+        self.module_type = getattr(modconf, 'module_type', 'unset')
+        self.module_name = getattr(modconf, 'module_name', 'unset')
+        self.modules = getattr(modconf, 'modules', [])
+        if self.modules and not self.modules[0]:
+            self.modules = []
+        # todo: set default directory for the modules directory
+        self.modules_dir = getattr(modconf, 'modules_dir', '/var/lib/shinken/modules')
+        logger.info("modules: %s in %s", self.modules, self.modules_dir)
 
         self.plugins = []
         self.modconf = modconf
@@ -358,7 +328,7 @@ class WebuiBroker(BaseModule):
         self.bottle = bottle
 
         bottle.BaseTemplate.defaults['app'] = self
-        bottle.BaseTemplate.defaults['alignak'] = ALIGNAK
+        bottle.BaseTemplate.defaults['alignak'] = True
 
     def init(self):
         """
@@ -366,12 +336,9 @@ class WebuiBroker(BaseModule):
 
         :return:
         """
-        logger.info("Initializing ...")
-        if self.alignak:
-            logger.warning("Running the Web UI for the Alignak framework.")
-        else:
-            logger.warning("Running the Web UI for the Shinken framework.")
+        logger.info("Running the Web UI for the Alignak framework.")
 
+        logger.info("Initializing ...")
         self.rg.load_external_queue(self.from_q)
         # Return True to confirm correct initialization
         return True
@@ -570,7 +537,8 @@ class WebuiBroker(BaseModule):
             # TODO: look for alive and killing
 
             # Launch the Alignak arbiter data thread ...
-            if self.alignak and self.alignak_endpoint:
+            if self.alignak_endpoint:
+                logger.info("Starting Alignak arbiter check thread...")
                 self.fmwk_thread = threading.Thread(None, self.fmwk_thread, 'fmwk_hread')
                 self.fmwk_thread.start()
 
@@ -586,20 +554,13 @@ class WebuiBroker(BaseModule):
         """
             A plugin sends us an external command. Notify this command to the monitoring framework ...
         """
-        global ALIGNAK
         logger.debug("Got an external command: %s", e.__dict__)
-        if self.alignak:
-            logger.info("Sending a command to Alignak")
-            req = requests.Session()
-            raw_data = req.get("http://localhost:7770/command",
-                               params={'command': e.cmd_line})
-            logger.debug("Result: %s", raw_data.content)
-            logger.info("Sent")
-        else:
-            try:
-                self.from_q.put(e)
-            except Exception as exp:
-                logger.error("External command push, exception: %s", str(exp))
+        logger.info("Sending a command to Alignak")
+        req = requests.Session()
+        raw_data = req.get("%s/command" % self.alignak_endpoint,
+                           params={'command': e.cmd_line})
+        logger.debug("Result: %s", raw_data.content)
+        logger.info("Sent")
 
     def wait_for_no_writers(self):
         """
@@ -943,10 +904,7 @@ class WebuiBroker(BaseModule):
             if os.path.exists(os.path.join(self.photo_dir, path + '.png')):
                 return bottle.static_file(path + '.png', root=self.photo_dir)
 
-            if ALIGNAK:
-                return bottle.static_file('images/logos/logo_alignak.png', root=htdocs_dir)
-
-            return bottle.static_file('images/logos/logo_shinken.png', root=htdocs_dir)
+            return bottle.static_file('images/logos/logo_alignak.png', root=htdocs_dir)
 
         @webui_app.route('/tag/:path#.+#')
         def give_tag(path):
@@ -986,10 +944,7 @@ class WebuiBroker(BaseModule):
             Returns the favicon path according to the Shinken/Alignak framework configuration
             :return:
             """
-            if ALIGNAK:
-                return bottle.static_file('alignak.ico', root=os.path.join(htdocs_dir, 'images/logos'))
-
-            return bottle.static_file('shinken.ico', root=os.path.join(htdocs_dir, 'images/logos'))
+            return bottle.static_file('alignak.ico', root=os.path.join(htdocs_dir, 'images/logos'))
 
         # And add the opensearch xml
         @webui_app.route('/opensearch.xml')
