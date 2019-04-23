@@ -24,7 +24,10 @@ import re
 import json
 import random
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -38,7 +41,7 @@ params = {}
 def load_config(app):
     global params
 
-    logger.info("[WebUI-worldmap] loading configuration ...")
+    logger.info("loading configuration ...")
 
     properties = {
         'worldmap-zoom': '{"default_zoom": 16}',
@@ -52,12 +55,12 @@ def load_config(app):
     for p, default in list(properties.items()):
         params.update(json.loads(app.prefs_module.get_ui_common_preference(p, default)))
 
-    logger.info("[WebUI-worldmap] configuration loaded.")
-    logger.info("[WebUI-worldmap] configuration, params: %s", params)
+    logger.info("configuration loaded.")
+    logger.info("configuration, params: %s", params)
 
 
 def search_hosts_with_coordinates(search, user):
-    logger.debug("[WebUI-worldmap] search parameters '%s'", search)
+    logger.debug("search parameters '%s'", search)
     items = app.datamgr.search_hosts_and_services(search, user)
 
     # We are looking for hosts with valid GPS coordinates,
@@ -66,7 +69,7 @@ def search_hosts_with_coordinates(search, user):
     # in the 'generic-host' template.
     valid_hosts = []
     for h in items:
-        logger.debug("[WebUI-worldmap] found host '%s'", h.get_name())
+        logger.debug("found host '%s'", h.get_name())
 
         if h.business_impact not in params['hosts_level']:
             continue
@@ -78,10 +81,10 @@ def search_hosts_with_coordinates(search, user):
             if not (-180 <= _lat <= 180 and -180 <= _lng <= 180):
                 raise Exception()
         except Exception:
-            logger.debug("[WebUI-worldmap] host '%s' has invalid GPS coordinates", h.get_name())
+            logger.debug("host '%s' has invalid GPS coordinates", h.get_name())
             continue
 
-        logger.debug("[WebUI-worldmap] host '%s' located on worldmap: %f - %f",
+        logger.debug("host '%s' located on worldmap: %f - %f",
                      h.get_name(), _lat, _lng)
         valid_hosts.append(h)
 

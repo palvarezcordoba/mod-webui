@@ -44,13 +44,14 @@ import requests
 
 from collections import deque
 
-# Shinken logger configuration
-# from alignak.log import logger
+# Specific logger configuration
 import logging
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-# for handler in logger.parent.handlers:
-#     if isinstance(handler, logging.StreamHandler):
-#         logger.parent.removeHandler(handler)
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+# logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+# # for handler in logger.parent.handlers:
+# #     if isinstance(handler, logging.StreamHandler):
+# #         logger.parent.removeHandler(handler)
 
 
 from alignak.basemodule import BaseModule
@@ -80,9 +81,7 @@ from .submodules.graphs import GraphsMetaModule
 from .submodules.helpdesk import HelpdeskMetaModule
 
 
-ALIGNAK = True
-
-WEBUI_VERSION = "2.7.2"
+WEBUI_VERSION = "3.0.0"
 WEBUI_COPYRIGHT = "2009-2019"
 WEBUI_LICENSE = "License GNU AGPL as published by the FSF, minimum version 3 of the License."
 
@@ -91,9 +90,9 @@ root_app = bottle.default_app()
 webui_app = bottle.Bottle()
 
 # Debug
-SHINKEN_UI_DEBUG = False
-if os.environ.get('SHINKEN_UI_DEBUG', None):
-    SHINKEN_UI_DEBUG = True
+ALIGNAK_UI_DEBUG = False
+if os.environ.get('ALIGNAK_UI_DEBUG', None) or os.environ.get('SHINKEN_UI_DEBUG', None):
+    ALIGNAK_UI_DEBUG = True
     bottle.debug(True)
 # bottle.debug(True)
 # # Do not log the urllib3 requests on the console
@@ -107,8 +106,8 @@ bottle.TEMPLATE_PATH.append(os.path.join(webuimod_dir, 'views'))
 bottle.TEMPLATE_PATH.append(webuimod_dir)
 
 properties = {
-    'daemons': ['broker', 'scheduler'],
-    'type': 'webui2',
+    'daemons': ['broker'],
+    'type': 'webui',
     'phases': ['running'],
     'external': True
 }
@@ -117,11 +116,11 @@ properties = {
 # called by the plugin manager to get an instance
 def get_instance(plugin):
     # Only add template if we CALL webui
-    logger.info("[WebUI] Webui_broker directory: %s", webuimod_dir)
+    logger.info("Webui_broker directory: %s", webuimod_dir)
 
-    logger.info("[WebUI] configuration: %s", plugin.__dict__)
+    logger.info("configuration: %s", plugin.__dict__)
     instance = WebuiBroker(plugin)
-    logger.info("[WebUI] got an instance of Webui_broker for module: %s", plugin.get_name())
+    logger.info("got an instance of Webui_broker for module: %s", plugin.get_name())
     return instance
 
 
@@ -143,7 +142,7 @@ def resolve_auth_secret(modconf):
                     secret.write(candidate)
             except Exception as e:
                 logger.error(
-                    "[WebUI] Authentication secret file creation failed: %s, error: %s",
+                    "Authentication secret file creation failed: %s, error: %s",
                     auth_secret_file, str(e)
                 )
     return candidate
@@ -154,73 +153,46 @@ class WebuiBroker(BaseModule):
     def __init__(self, modconf):
         BaseModule.__init__(self, modconf)
 
-        if SHINKEN_UI_DEBUG:
+        if ALIGNAK_UI_DEBUG:
             logger.warning("Using Bottle Web framework in debug mode.")
 
-        # For Alignak ModulesManager...
-        # ---
-        self.alignak = False
-        if ALIGNAK:
-            self.alignak = True
-            # A daemon must have these properties
-            self.type = 'webui'
-            self.name = 'webui'
+        # A daemon must have these properties
+        self.type = 'webui'
+        self.name = 'webui'
 
-            # Configure Alignak Arbiter API endpoint
-            self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
-            self.alignak_check_period = int(getattr(modconf, 'alignak_check_period', '10'))
-            self.alignak_livestate = {}
-            self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
-            self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
-                                                                  self.alignak_events_count)))
-
-            # # Shinken logger configuration
-            # log_console = (getattr(modconf, 'log_console', '0') == '1')
-            # if not log_console:
-            #     # Remove the forced color log handler
-            #     for hdlr in logger.handlers:
-            #         if isinstance(hdlr, ColorStreamHandler):
-            #             logger.removeHandler(hdlr)
-            #
-            # log_level = getattr(modconf, 'log_level', 'INFO')
-            # log_file = getattr(modconf, 'log_file', '/var/log/alignak/alignak-webui.log')
-            # try:
-            #     logger.register_local_log(log_file, log_level)
-            # except IOError:
-            #     cfg_log_file = log_file
-            #     log_file = '/tmp/alignak-webui.log'
-            #     logger.register_local_log(log_file, log_level)
-            #     logger.error("[WebUI] configured log_file is incorrect: %s. "
-            #                  "Will log to %s", cfg_log_file, log_file)
-            # logger.set_human_format()
-            # logger.setLevel(log_level)
-            #
-            # I may have some modules in my configuration or not...
-            self.module_type = getattr(modconf, 'module_type', 'unset')
-            self.module_name = getattr(modconf, 'module_name', 'unset')
-            self.modules = getattr(modconf, 'modules', [])
-            if self.modules and not self.modules[0]:
-                self.modules = []
-            # todo: set default directory for the modules directory
-            self.modules_dir = getattr(modconf, 'modules_dir', '/var/lib/shinken/modules')
-            logger.info("[WebUI] modules: %s in %s", self.modules, self.modules_dir)
+        # Configure Alignak Arbiter API endpoint
+        self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
+        self.alignak_check_period = int(getattr(modconf, 'alignak_check_period', '10'))
+        self.alignak_livestate = {}
+        self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
+        self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
+                                                              self.alignak_events_count)))
+        self.module_type = getattr(modconf, 'module_type', 'unset')
+        self.module_name = getattr(modconf, 'module_name', 'unset')
+        self.modules = getattr(modconf, 'modules', [])
+        if self.modules and not self.modules[0]:
+            self.modules = []
+        # todo: set default directory for the modules directory
+        self.modules_dir = getattr(modconf, 'modules_dir', '/var/lib/shinken/modules')
+        logger.info("modules: %s in %s", self.modules, self.modules_dir)
 
         self.plugins = []
         self.modconf = modconf
-        logger.debug("[WebUI] configuration: %s", self.modconf)
+        logger.info("name: %s", __name__)
+        logger.debug("configuration: %s", self.modconf)
 
         # Web server configuration
         self.host = getattr(modconf, 'host', '0.0.0.0')
         self.port = int(getattr(modconf, 'port', '7767'))
-        logger.info("[WebUI] server: %s:%d", self.host, self.port)
+        logger.info("server: %s:%d", self.host, self.port)
 
         # Build session cookie
         self.session_cookie = getattr(modconf, 'cookie_name', 'user_session')
         self.auth_secret = resolve_auth_secret(modconf)
-        logger.info("[WebUI] user session cookie name: %s", self.session_cookie)
+        logger.info("user session cookie name: %s", self.session_cookie)
         # TODO : common preferences
         self.play_sound = to_bool(getattr(modconf, 'play_sound', '0'))
-        logger.info("[WebUI] sound: %s", self.play_sound)
+        logger.info("sound: %s", self.play_sound)
         # TODO : common preferences
         self.login_text = getattr(modconf, 'login_text', None)
         # TODO : common preferences
@@ -236,7 +208,7 @@ class WebuiBroker(BaseModule):
         # self.max_output_length = int(getattr(modconf, 'max_output_length', '100'))
         # TODO : common preferences
         self.refresh_period = int(getattr(modconf, 'refresh_period', '60'))
-        logger.info("[WebUI] refresh period: %s", self.refresh_period)
+        logger.info("refresh period: %s", self.refresh_period)
         self.refresh = False if self.refresh_period == 0 else True
         # Use element tag as image or use text
         self.tag_as_image = to_bool(getattr(modconf, 'tag_as_image', '0'))
@@ -278,23 +250,23 @@ class WebuiBroker(BaseModule):
         self.htpasswd_file = getattr(modconf, 'htpasswd_file', None)
         if self.htpasswd_file:
             if not os.path.exists(self.htpasswd_file):
-                logger.warning("[WebUI] htpasswd file '%s' does not exist.", self.htpasswd_file)
+                logger.warning("htpasswd file '%s' does not exist.", self.htpasswd_file)
                 self.htpasswd_file = None
 
         # Load the config dir and make it an absolute path
         self.config_dir = getattr(modconf, 'config_dir', 'share')
         self.config_dir = os.path.abspath(self.config_dir)
-        logger.info("[WebUI] Config dir: %s", self.config_dir)
+        logger.info("Config dir: %s", self.config_dir)
 
         # Load the share dir and make it an absolute path
         self.share_dir = getattr(modconf, 'share_dir', 'share')
         self.share_dir = os.path.abspath(self.share_dir)
-        logger.info("[WebUI] Share dir: %s", self.share_dir)
+        logger.info("Share dir: %s", self.share_dir)
 
         # Load the photo dir and make it an absolute path
         self.photo_dir = getattr(modconf, 'photos_dir', 'photos')
         self.photo_dir = os.path.abspath(self.photo_dir)
-        logger.info("[WebUI] Photo dir: %s", self.photo_dir)
+        logger.info("Photo dir: %s", self.photo_dir)
 
         # User information
         self.user_session = None
@@ -307,15 +279,15 @@ class WebuiBroker(BaseModule):
         self.additional_plugins_dir = getattr(modconf, 'additional_plugins_dir', '')
         if self.additional_plugins_dir:
             self.additional_plugins_dir = os.path.abspath(self.additional_plugins_dir)
-        logger.info("[WebUI] Additional plugins dir: %s", self.additional_plugins_dir)
+        logger.info("Additional plugins dir: %s", self.additional_plugins_dir)
 
         # Web UI timezone
         self.timezone = getattr(modconf, 'timezone', 'Europe/Paris')
         if self.timezone:
-            logger.info("[WebUI] Setting our timezone to %s", self.timezone)
+            logger.info("Setting our timezone to %s", self.timezone)
             os.environ['TZ'] = self.timezone
             time.tzset()
-        logger.info("[WebUI] parameter timezone: %s", self.timezone)
+        logger.info("parameter timezone: %s", self.timezone)
 
         # Visual alerting thresholds
         # --------------------------
@@ -324,7 +296,7 @@ class WebuiBroker(BaseModule):
         self.problems_business_impact = int(getattr(modconf, 'problems_business_impact', '1'))
         # important_problems_business_impact is used to filter the alerting badges in the header bar (default is 3)
         self.important_problems_business_impact = int(getattr(modconf, 'important_problems_business_impact', '3'))
-        logger.info("[WebUI] minimum business impacts, all UI: %s, most important: %s",
+        logger.info("minimum business impacts, all UI: %s, most important: %s",
                     self.problems_business_impact, self.important_problems_business_impact)
 
         self.PROBLEMS_SEARCH_STRING = \
@@ -356,7 +328,7 @@ class WebuiBroker(BaseModule):
         self.bottle = bottle
 
         bottle.BaseTemplate.defaults['app'] = self
-        bottle.BaseTemplate.defaults['alignak'] = ALIGNAK
+        bottle.BaseTemplate.defaults['alignak'] = True
 
     def init(self):
         """
@@ -364,12 +336,9 @@ class WebuiBroker(BaseModule):
 
         :return:
         """
-        logger.info("[WebUI] Initializing ...")
-        if self.alignak:
-            logger.warning("Running the Web UI for the Alignak framework.")
-        else:
-            logger.warning("Running the Web UI for the Shinken framework.")
+        logger.info("Running the Web UI for the Alignak framework.")
 
+        logger.info("Initializing ...")
         self.rg.load_external_queue(self.from_q)
         # Return True to confirm correct initialization
         return True
@@ -422,7 +391,8 @@ class WebuiBroker(BaseModule):
 
         if not self.interrupted:
             logger.info("The WebUI received a request to stop.")
-        super(BaseModule, self).manage_signal(sig=sig, frame=frame)
+            self.interrupted = True
+        # super(BaseModule, self).manage_signal(sig=sig, frame=frame)
 
     def main(self):  # pylint: disable=global-statement
         """
@@ -438,7 +408,7 @@ class WebuiBroker(BaseModule):
         # to avoid too many testings...
         self.debug_output = []
 
-        logger.info("[WebUI] configured modules %s", [m.get_name() for m in self.modules])
+        logger.info("configured modules %s", [m.get_name() for m in self.modules])
         # todo: check this!
         # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
         self.modules_manager = ModulesManager(self)
@@ -460,24 +430,24 @@ class WebuiBroker(BaseModule):
             for msg in self.modules_manager.configuration_warnings:
                 logger.warning(msg)
 
-        logger.info("[WebUI] imported %d modules", len(self.modules_manager.instances))
+        logger.info("imported %d modules", len(self.modules_manager.instances))
 
         for inst in self.modules_manager.instances:
-            logger.info("[WebUI] loading %s", inst.get_name())
+            logger.info("loading %s", inst.get_name())
             f = getattr(inst, 'load', None)
             if f and callable(f):
-                logger.info("[WebUI] running module load function")
+                logger.info("running module load function")
                 f(self)
-        logger.info("[WebUI] loaded modules %s", [m.get_name() for m in self.modules])
+        logger.info("loaded modules %s", [m.get_name() for m in self.modules])
 
         # We can now output some previously silenced debug output
         for debug_log in self.debug_output:
-            logger.debug("[WebUI] debug: %s", debug_log)
+            logger.debug("debug: %s", debug_log)
         del self.debug_output
 
         # Check if the Bottle view dir really exist
         if not os.path.exists(bottle.TEMPLATE_PATH[0]):
-            logger.error("[WebUI] The view path do not exist at %s", bottle.TEMPLATE_PATH)
+            logger.error("The view path do not exist at %s", bottle.TEMPLATE_PATH)
             sys.exit(2)
 
         # Load internal sub modules
@@ -501,16 +471,16 @@ class WebuiBroker(BaseModule):
         # Check directories
         # We check if the photo directory exists. If not, try to create it
         for directory in [self.share_dir, self.photo_dir, self.config_dir]:
-            logger.debug("[WebUI] Checking dir: %s", directory)
+            logger.debug("Checking dir: %s", directory)
             if not os.path.exists(directory):
                 try:
                     # os.mkdir(dir)
                     os.makedirs(directory, mode=0o777)
-                    logger.info("[WebUI] Created directory: %s", directory)
+                    logger.info("Created directory: %s", directory)
                 except Exception as e:
-                    logger.error("[WebUI] Directory creation failed: %s, error: %s", directory, str(e))
+                    logger.error("Directory creation failed: %s, error: %s", directory, str(e))
             else:
-                logger.debug("[WebUI] Still existing directory: %s", directory)
+                logger.debug("Still existing directory: %s", directory)
 
         # Bottle objects
         self.request = bottle.request
@@ -542,14 +512,14 @@ class WebuiBroker(BaseModule):
             # Declare the whole app static files AFTER the plugin ones
             self.declare_common_static()
 
-            logger.debug("[WebUI] declared routes:")
+            logger.debug("declared routes:")
             for route in webui_app.routes:
-                logger.debug("[WebUI] - %s", route.__dict__)
+                logger.debug("- %s", route.__dict__)
                 if route.name:
                     if route.config:
-                        logger.debug("[WebUI] - %s for %s, configuration: %s", route.name, route.rule, route.config)
+                        logger.debug("- %s for %s, configuration: %s", route.name, route.rule, route.config)
                     else:
-                        logger.debug("[WebUI] - %s for %s", route.name, route.rule)
+                        logger.debug("- %s for %s", route.name, route.rule)
 
             # We will protect the operations on
             # the non read+write with a lock and
@@ -567,36 +537,30 @@ class WebuiBroker(BaseModule):
             # TODO: look for alive and killing
 
             # Launch the Alignak arbiter data thread ...
-            if self.alignak and self.alignak_endpoint:
+            if self.alignak_endpoint:
+                logger.info("Starting Alignak arbiter check thread...")
                 self.fmwk_thread = threading.Thread(None, self.fmwk_thread, 'fmwk_hread')
                 self.fmwk_thread.start()
 
-            logger.info("[WebUI] starting Web UI server on %s:%d ...", self.host, self.port)
+            logger.info("starting Web UI server on %s:%d ...", self.host, self.port)
             bottle.TEMPLATES.clear()
             webui_app.run(host=self.host, port=self.port, server=self.http_backend, **self.serveropts)
         except Exception as e:
-            logger.error("[WebUI] do_main exception: %s", str(e))
-            logger.error("[WebUI] traceback: %s", traceback.format_exc())
+            logger.error("do_main exception: %s", str(e))
+            logger.error("traceback: %s", traceback.format_exc())
             exit(1)
 
     def push_external_command(self, e):  # pylint: disable=global-statement
         """
             A plugin sends us an external command. Notify this command to the monitoring framework ...
         """
-        global ALIGNAK
-        logger.debug("[WebUI] Got an external command: %s", e.__dict__)
-        if self.alignak:
-            logger.info("Sending a command to Alignak")
-            req = requests.Session()
-            raw_data = req.get("http://localhost:7770/command",
-                               params={'command': e.cmd_line})
-            logger.debug("Result: %s", raw_data.content)
-            logger.info("Sent")
-        else:
-            try:
-                self.from_q.put(e)
-            except Exception as exp:
-                logger.error("[WebUI] External command push, exception: %s", str(exp))
+        logger.debug("Got an external command: %s", e.__dict__)
+        logger.info("Sending a command to Alignak")
+        req = requests.Session()
+        raw_data = req.get("%s/command" % self.alignak_endpoint,
+                           params={'command': e.cmd_line})
+        logger.debug("Result: %s", raw_data.content)
+        logger.info("Sent")
 
     def wait_for_no_writers(self):
         """
@@ -647,7 +611,7 @@ class WebuiBroker(BaseModule):
             # We should warn if we cannot update broks
             # for more than 30s because it can be not good
             if time.time() - start > 30:
-                logger.warning("[WebUI] wait_for_no_readers, we are in lock/read since more than 30s!")
+                logger.warning("wait_for_no_readers, we are in lock/read since more than 30s!")
                 start = time.time()
 
     def lockable_function(self, f):
@@ -682,7 +646,7 @@ class WebuiBroker(BaseModule):
 
         :return:
         """
-        logger.debug("[WebUI] manage_brok_thread start ...")
+        logger.debug("manage_brok_thread start ...")
 
         while not self.interrupted:
             start = time.clock()
@@ -704,7 +668,7 @@ class WebuiBroker(BaseModule):
             if not message:
                 continue
 
-            logger.debug("[WebUI] manage_brok_thread got %d broks, queue length: %d",
+            logger.debug("manage_brok_thread got %d broks, queue length: %d",
                          len(message), self.to_q.qsize())
             for b in message:
                 b.prepare()
@@ -719,18 +683,18 @@ class WebuiBroker(BaseModule):
                         try:
                             mod.manage_brok(b)
                         except Exception as exp:
-                            logger.warning("[WebUI] The mod %s raise an exception: %s, "
+                            logger.warning("The mod %s raise an exception: %s, "
                                            "I'm tagging it to restart later", mod.get_name(), str(exp))
-                            logger.debug("[WebUI] Back trace of this kill: %s", traceback.format_exc())
+                            logger.debug("Back trace of this kill: %s", traceback.format_exc())
                             self.modules_manager.set_to_restart(mod)
                 except Exception as exp:
-                    logger.error("[WebUI] manage_brok_thread exception: %s", str(exp))
-                    logger.error("[WebUI] Exception type: %s", type(exp))
-                    logger.error("[WebUI] Back trace of this kill: %s", traceback.format_exc())
+                    logger.error("manage_brok_thread exception: %s", str(exp))
+                    logger.error("Exception type: %s", type(exp))
+                    logger.error("Back trace of this kill: %s", traceback.format_exc())
                     # No need to raise here, we are in a thread, exit!
                     os._exit(2)
                 finally:
-                    # logger.debug("[WebUI] manage_brok_thread finally")
+                    # logger.debug("manage_brok_thread finally")
                     # We can remove us as a writer from now. It's NOT an atomic operation
                     # so we REALLY not need a lock here (yes, I try without and I got
                     # a not so accurate value there....)
@@ -738,10 +702,10 @@ class WebuiBroker(BaseModule):
                     self.nb_writers -= 1
                     self.global_lock.release()
 
-            logger.debug("[WebUI] time to manage %d broks (time %.2gs)",
+            logger.debug("time to manage %d broks (time %.2gs)",
                          len(message), time.clock() - start)
 
-        logger.debug("[WebUI] manage_brok_thread end ...")
+        logger.debug("manage_brok_thread end ...")
 
     def fmwk_thread(self):
         """A thread function that periodically gets its state from the Alignak arbiter
@@ -749,7 +713,7 @@ class WebuiBroker(BaseModule):
         This function gets Alignak status in our alignak_livestate and
         then it gets the Alignak events in our alignak_events queue
         """
-        logger.debug("[WebUI] fmwk_thread start ...")
+        logger.debug("fmwk_thread start ...")
 
         req = requests.Session()
         alignak_timestamp = 0
@@ -759,9 +723,9 @@ class WebuiBroker(BaseModule):
                 raw_data = req.get("%s/status" % self.alignak_endpoint)
                 data = json.loads(raw_data.content)
                 self.alignak_livestate = data.get('livestate', 'Unknown')
-                logger.debug("[WebUI-fmwk_thread] Livestate: %s", data)
+                logger.debug("[fmwk_thread] Livestate: %s", data)
             except Exception as exp:
-                logger.info("[WebUI-system] alignak_status, exception: %s", exp)
+                logger.info("[fmwk_thread] alignak_status, exception: %s", exp)
 
             try:
                 # Get Alignak most recent events
@@ -770,7 +734,7 @@ class WebuiBroker(BaseModule):
                 raw_data = req.get("%s/events_log?details=1&count=%d&timestamp=%d"
                                    % (self.alignak_endpoint, self.alignak_events_count, alignak_timestamp))
                 data = json.loads(raw_data.content)
-                logger.debug("[WebUI-fmwk_thread] got %d event log", len(data))
+                logger.debug("[fmwk_thread] got %d event log", len(data))
                 for log in data:
                     # Data contains: {
                     #   u'date': u'2018-11-24 16:28:03', u'timestamp': 1543073283.434844,
@@ -778,16 +742,16 @@ class WebuiBroker(BaseModule):
                     # }
                     alignak_timestamp = max(alignak_timestamp, log['timestamp'])
                     if log not in self.alignak_events:
-                        logger.debug("[WebUI-fmwk_thread] New event log: %s", log)
+                        logger.debug("[fmwk_thread] New event log: %s", log)
                         self.alignak_events.appendleft(log)
-                logger.debug("[WebUI-fmwk_thread] %d log events", len(self.alignak_events))
+                logger.debug("[fmwk_thread] %d log events", len(self.alignak_events))
             except Exception as exp:
-                logger.info("[WebUI-system] alignak_status, exception: %s", exp)
+                logger.info("[fmwk_thread] alignak_status, exception: %s", exp)
 
             # Sleep for a while...
             time.sleep(self.alignak_check_period)
 
-        logger.debug("[WebUI] fmwk_thread end ...")
+        logger.debug("fmwk_thread end ...")
 
     def load_plugins(self, plugin_dir):
         """
@@ -798,11 +762,11 @@ class WebuiBroker(BaseModule):
         :param plugin_dir:  the directory where to search for plugins
         :return:
         """
-        logger.info("[WebUI] load plugins directory: %s", plugin_dir)
+        logger.info("load plugins directory: %s", plugin_dir)
 
         # Load plugin directories
         if not os.path.exists(plugin_dir):
-            logger.error("[WebUI] load plugins directory does not exist: %s", plugin_dir)
+            logger.error("load plugins directory does not exist: %s", plugin_dir)
             return
 
         plugin_dirs = [fname for fname in os.listdir(plugin_dir)
@@ -817,7 +781,7 @@ class WebuiBroker(BaseModule):
 
     def load_plugin(self, fdir, plugin_dir):
         """Load a WebUI plugin"""
-        logger.debug("[WebUI] loading plugin %s ...", fdir)
+        logger.debug("loading plugin %s ...", fdir)
         try:
             # Put the full qualified path of the module we want to load
             # for example we will give  webui/plugins/eltdetail/
@@ -827,7 +791,7 @@ class WebuiBroker(BaseModule):
             m_dir = os.path.abspath(os.path.dirname(m.__file__))
 
             for (f, entry) in list(m.pages.items()):
-                logger.debug("[WebUI] entry: %s", entry)
+                logger.debug("entry: %s", entry)
                 # IMPORTANT: apply VIEW BEFORE route!
                 view = entry.get('view', None)
                 if view:
@@ -873,7 +837,7 @@ class WebuiBroker(BaseModule):
 
             # And we add the views dir of this plugin in our TEMPLATE
             # PATH
-            logger.debug("[WebUI] plugin views dir: %s", os.path.join(m_dir, 'views'))
+            logger.debug("plugin views dir: %s", os.path.join(m_dir, 'views'))
             bottle.TEMPLATE_PATH.append(os.path.join(m_dir, 'views'))
 
             # And finally register me so the pages can get data and other
@@ -883,22 +847,22 @@ class WebuiBroker(BaseModule):
             # Load/set plugin configuration
             f = getattr(m, 'load_config', None)
             if f and callable(f):
-                logger.debug("[WebUI] calling plugin %s, load configuration", fdir)
+                logger.debug("calling plugin %s, load configuration", fdir)
                 f(self)
 
-            logger.info("[WebUI] loaded plugin %s", fdir)
+            logger.info("loaded plugin %s", fdir)
 
         except Exception as exp:
-            logger.error("[WebUI] loading plugin %s, exception: %s", fdir, str(exp))
+            logger.error("loading plugin %s, exception: %s", fdir, str(exp))
 
     def get_url(self, name):
         """Get URL for a named route"""
-        logger.debug("[WebUI] get_url for '%s'", name)
+        logger.debug("get_url for '%s'", name)
 
         try:
             return webui_app.get_url(name)
         except Exception as e:
-            logger.error("[WebUI] get_url, exception: %s", str(e))
+            logger.error("get_url, exception: %s", str(e))
 
         return '/'
 
@@ -910,7 +874,7 @@ class WebuiBroker(BaseModule):
         :param m_dir:
         :return:
         """
-        logger.debug("[WebUI] add static route: %s", fdir)
+        logger.debug("add static route: %s", fdir)
         static_route = '/static/' + fdir + '/:path#.+#'
 
         def plugin_static(path):
@@ -940,10 +904,7 @@ class WebuiBroker(BaseModule):
             if os.path.exists(os.path.join(self.photo_dir, path + '.png')):
                 return bottle.static_file(path + '.png', root=self.photo_dir)
 
-            if ALIGNAK:
-                return bottle.static_file('images/logos/logo_alignak.png', root=htdocs_dir)
-
-            return bottle.static_file('images/logos/logo_shinken.png', root=htdocs_dir)
+            return bottle.static_file('images/logos/logo_alignak.png', root=htdocs_dir)
 
         @webui_app.route('/tag/:path#.+#')
         def give_tag(path):
@@ -953,13 +914,13 @@ class WebuiBroker(BaseModule):
 
             # If a tag image (tag.png) exists in the share dir, give it ...
             tag_path = "%s/images/sets/%s" % (self.share_dir, path)
-            logger.debug("[WebUI] searching tag: %s", os.path.join(tag_path, 'tag.png'))
+            logger.debug("searching tag: %s", os.path.join(tag_path, 'tag.png'))
             if os.path.exists(os.path.join(tag_path, 'tag.png')):
                 return bottle.static_file('tag.png', root=tag_path)
 
             # Default tags icons are located in images/tags directory ...
             tag_path = "%s/images/tags/%s" % (htdocs_dir, path)
-            logger.debug("[WebUI] searching for: %s", os.path.join(tag_path, 'tag.png'))
+            logger.debug("searching for: %s", os.path.join(tag_path, 'tag.png'))
             if os.path.exists(os.path.join(tag_path, 'tag.png')):
                 return bottle.static_file('tag.png', root=tag_path)
 
@@ -983,10 +944,7 @@ class WebuiBroker(BaseModule):
             Returns the favicon path according to the Shinken/Alignak framework configuration
             :return:
             """
-            if ALIGNAK:
-                return bottle.static_file('alignak.ico', root=os.path.join(htdocs_dir, 'images/logos'))
-
-            return bottle.static_file('shinken.ico', root=os.path.join(htdocs_dir, 'images/logos'))
+            return bottle.static_file('alignak.ico', root=os.path.join(htdocs_dir, 'images/logos'))
 
         # And add the opensearch xml
         @webui_app.route('/opensearch.xml')
@@ -997,7 +955,7 @@ class WebuiBroker(BaseModule):
 
         @webui_app.route('/modal/:path#.+#')
         def give_modal(path):
-            logger.debug("[WebUI] get modal window content: %s", path)
+            logger.debug("get modal window content: %s", path)
             return bottle.template('modal_' + path)
 
     def check_authentication(self, username, password):
@@ -1012,32 +970,32 @@ class WebuiBroker(BaseModule):
         :param password:
         :return:
         """
-        logger.info("[WebUI] Checking authentication for user: %s", username)
+        logger.info("Checking authentication for user: %s", username)
         self.user_session = None
         self.user_info = None
 
-        logger.info("[WebUI] Requesting authentication for user: %s", username)
+        logger.info("Requesting authentication for user: %s", username)
         user = self.auth_module.check_auth(username, password)
         if user:
             # Check existing contact ...
             c = self.datamgr.get_contact(name=username)
             if not c:
-                logger.error("[WebUI] You need to have a contact having the same name as your user: %s", username)
+                logger.error("You need to have a contact having the same name as your user: %s", username)
                 return False
 
             user = User.from_contact(c)
 
             self.user_session = self.auth_module.get_session()
-            logger.info("[WebUI] User session: %s", self.user_session)
+            logger.info("User session: %s", self.user_session)
             self.user_info = self.auth_module.get_user_info()
-            logger.info("[WebUI] User information: %s", self.user_info)
+            logger.info("User information: %s", self.user_info)
 
             if self.user_session and self.user_info:
                 user.set_information(self.user_session, self.user_info)
 
             return True
 
-        logger.warning("[WebUI] The user '%s' has not been authenticated.", username)
+        logger.warning("The user '%s' has not been authenticated.", username)
         return False
 
     def can_action(self, username=None):
@@ -1069,7 +1027,7 @@ class WebuiBroker(BaseModule):
 
         :return:
         """
-        logger.debug("[WebUI] Fetching UI external links ...")
+        logger.debug("Fetching UI external links ...")
 
         lst = []
         for mod in self.modules_manager.get_internal_instances():
@@ -1078,7 +1036,7 @@ class WebuiBroker(BaseModule):
                 if f and callable(f):
                     lst.append(f())
             except Exception as exp:
-                logger.warning("[WebUI] Warning: The mod %s raised an exception when calling "
+                logger.warning("Warning: The mod %s raised an exception when calling "
                                "its get_external_ui_link function: %s, ", mod.get_name(), str(exp))
 
         return lst
@@ -1162,7 +1120,7 @@ def login_required():
     # :COMMENT:maethor:150718: This hack is crazy, but I don't know how to do it properly
     app = bottle.BaseTemplate.defaults['app']
 
-    logger.debug("[WebUI] login_required, requested URL: %s", request.urlparts.path)
+    logger.debug("login_required, requested URL: %s", request.urlparts.path)
     # No static route need user authentication...
     if request.urlparts.path.startswith('/static'):
         return
@@ -1180,23 +1138,23 @@ def login_required():
             bottle.redirect(app.get_url("Dashboard"))
         return
 
-    logger.debug("[WebUI] login_required for %s, getting user cookie ...", request.urlparts.path)
+    logger.debug("login_required for %s, getting user cookie ...", request.urlparts.path)
     cookie_value = bottle.request.get_cookie(str(app.session_cookie), secret=app.auth_secret)
     if cookie_value:
         app.user_session = cookie_value.get('session', '')
-        logger.debug("[WebUI] user session: %s", app.user_session)
+        logger.debug("user session: %s", app.user_session)
         app.user_info = cookie_value.get('info', '')
-        logger.debug("[WebUI] user info: %s", app.user_info)
+        logger.debug("user info: %s", app.user_info)
         contact_name = cookie_value.get('login', cookie_value)
-        logger.debug("[WebUI] user login: %s", contact_name)
+        logger.debug("user login: %s", contact_name)
     else:
         # Only the /dashboard/currently should be accessible to anonymous users
         contact_name = 'anonymous'
         if not app.allow_anonymous:
-            logger.info("[WebUI] anonymous access is forbidden. Redirecting to %s", app.get_url("GetLogin"))
+            logger.info("anonymous access is forbidden. Redirecting to %s", app.get_url("GetLogin"))
             bottle.redirect(app.get_url("GetLogin"))
         if request.urlparts.path not in [app.get_url("Currently")]:
-            logger.info("[WebUI] anonymous access is allowed only for the dashboard, not for %s",
+            logger.info("anonymous access is allowed only for the dashboard, not for %s",
                         request.urlparts.path)
             bottle.redirect(app.get_url("GetLogin"))
 
@@ -1204,7 +1162,7 @@ def login_required():
     if not contact:
         # If we got the data from our schedulers, the contact does not exist
         if app.rg.initialized:
-            logger.info("[WebUI] contact does not exist: %s", contact_name)
+            logger.info("contact does not exist: %s", contact_name)
             bottle.redirect(app.get_url("GetLogin"))
         else:
             # we did not yet received all data
@@ -1214,5 +1172,5 @@ def login_required():
     if app.user_session and app.user_info:
         user.set_information(app.user_session, app.user_info)
 
-    logger.debug("[WebUI] update current user: %s", user)
+    logger.debug("update current user: %s", user)
     request.environ['USER'] = user

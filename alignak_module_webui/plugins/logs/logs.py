@@ -31,7 +31,10 @@ import datetime
 
 from config_parser import ConfigParser
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Get plugin's parameters from configuration file
 params = {
@@ -48,7 +51,7 @@ def _get_logs(*args, **kwargs):
     if app.logs_module.is_available():
         return app.logs_module.get_ui_logs(*args, **kwargs)
 
-    logger.warning("[WebUI-logs] no get history external module defined!")
+    logger.warning("[logs] no get history external module defined!")
     return None
 
 
@@ -58,7 +61,7 @@ def load_config(app):
 
     currentdir = os.path.dirname(os.path.realpath(__file__))
     configuration_file = "%s/%s" % (currentdir, 'plugin.cfg')
-    logger.info("[WebUI-logs] Plugin configuration file: %s", configuration_file)
+    logger.info("[logs] Plugin configuration file: %s", configuration_file)
     try:
         scp = ConfigParser('#', '=')
         z = params.copy()
@@ -71,13 +74,13 @@ def load_config(app):
         if params['logs_services']:
             params['logs_services'] = [item.strip() for item in params['logs_services'].split(',')]
 
-        logger.info("[WebUI-logs] configuration loaded.")
-        logger.info("[WebUI-logs] configuration, fetching types: %s", params['logs_type'])
-        logger.info("[WebUI-logs] configuration, hosts: %s", params['logs_hosts'])
-        logger.info("[WebUI-logs] configuration, services: %s", params['logs_services'])
+        logger.info("[logs] configuration loaded.")
+        logger.info("[logs] configuration, fetching types: %s", params['logs_type'])
+        logger.info("[logs] configuration, hosts: %s", params['logs_hosts'])
+        logger.info("[logs] configuration, services: %s", params['logs_services'])
         return True
     except Exception as exp:
-        logger.warning("[WebUI-logs] configuration file (%s) not available: %s",
+        logger.warning("[logs] configuration file (%s) not available: %s",
                        configuration_file, str(exp))
         return False
 
@@ -94,9 +97,9 @@ def set_hosts_list():
     params['logs_hosts'] = []
 
     hostsList = app.request.forms.getall('hostsList[]')
-    logger.debug("[WebUI-logs] Selected hosts : ")
+    logger.debug("[logs] Selected hosts : ")
     for host in hostsList:
-        logger.debug("[WebUI-logs] - host : %s", host)
+        logger.debug("[logs] - host : %s", host)
         params['logs_hosts'].append(host)
 
     app.bottle.redirect("/logs")
@@ -114,9 +117,9 @@ def set_services_list():
     params['logs_services'] = []
 
     servicesList = app.request.forms.getall('servicesList[]')
-    logger.debug("[WebUI-logs] Selected services : ")
+    logger.debug("[logs] Selected services : ")
     for service in servicesList:
-        logger.debug("[WebUI-logs] - service : %s", service)
+        logger.debug("[logs] - service : %s", service)
         params['logs_services'].append(service)
 
     app.bottle.redirect("/logs")
@@ -134,9 +137,9 @@ def set_logs_type_list():
     params['logs_type'] = []
 
     logs_typeList = app.request.forms.getall('logs_typeList[]')
-    logger.debug("[WebUI-logs] Selected logs types : ")
+    logger.debug("[logs] Selected logs types : ")
     for log_type in logs_typeList:
-        logger.debug("[WebUI-logs] - log type : %s", log_type)
+        logger.debug("[logs] - log type : %s", log_type)
         params['logs_type'].append(log_type)
 
     app.bottle.redirect("/logs")
@@ -191,7 +194,7 @@ def get_global_history():
     midnight_timestamp = time.mktime(datetime.date.today().timetuple())
     range_start = int(app.request.GET.get('range_start', midnight_timestamp))
     range_end = int(app.request.GET.get('range_end', midnight_timestamp + 86399))
-    logger.debug("[WebUI-logs] get_global_history, range: %d - %d", range_start, range_end)
+    logger.debug("[logs] get_global_history, range: %d - %d", range_start, range_end)
 
     logs = _get_logs(filters={'type': {'$in': params['logs_type']}},
                      range_start=range_start, range_end=range_end)

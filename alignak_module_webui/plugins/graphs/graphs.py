@@ -27,7 +27,10 @@ import json
 import random
 
 import requests
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -44,7 +47,7 @@ def proxy_graph():
     try:
         r = requests.get(url)
         if r.status_code != 200:
-            logger.error("[WebUI-graph] Image URL not found: %d - %s", r.status_code, url)
+            logger.error("[graph] Image URL not found: %d - %s", r.status_code, url)
             app.bottle.response.status = r.status_code
             app.bottle.response.content_type = 'application/json'
             return json.dumps(
@@ -52,7 +55,7 @@ def proxy_graph():
             )
 
     except Exception as e:
-        logger.error("[WebUI-graph] exception: %s", str(e))
+        logger.error("[graph] exception: %s", str(e))
         app.bottle.response.status = 409
         app.bottle.response.content_type = 'application/json'
         return json.dumps(
@@ -99,7 +102,7 @@ def get_graphs_widget():
     # target=alias(color(constantLine(1000),"orange"),"Warning")&
     # target=alias(color(constantLine(3000),"red"),"Critical")
     url = app.request.GET.get('url', '')
-    logger.debug("[WebUI-graph] graph URL: %s", url)
+    logger.debug("[graph] graph URL: %s", url)
 
     if not url:
         search = app.request.GET.get('search', '') or app.datamgr.get_hosts(user)[0].host_name

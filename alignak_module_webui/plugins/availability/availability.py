@@ -26,13 +26,25 @@
 
 import time
 import datetime
-import urllib.request, urllib.parse, urllib.error
+# import urllib.request, urllib.parse, urllib.error
+try:
+    from urllib.parse import urlparse, urlencode
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode
+    from urllib2 import urlopen, Request, HTTPError
+
 
 from collections import OrderedDict
 
 import arrow
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -42,7 +54,7 @@ def _get_availability(*args, **kwargs):
     if app.logs_module.is_available():
         return app.logs_module.get_ui_availability(*args, **kwargs)
 
-    logger.warning("[WebUI-availability] no get availability external module defined!")
+    logger.warning("no get availability external module defined!")
     return None
 
 
@@ -93,13 +105,13 @@ def get_page():
     search = app.request.query.get('search', "type:host")
     if "type:host" not in search:
         search = "type:host " + search
-    logger.debug("[WebUI-availability] search parameters '%s'", search)
+    logger.debug("search parameters '%s'", search)
     hosts = app.datamgr.search_hosts_and_services(search, user)
 
     midnight_timestamp = time.mktime(datetime.date.today().timetuple())
     range_start = int(app.request.GET.get('range_start', midnight_timestamp))
     range_end = int(app.request.GET.get('range_end', midnight_timestamp + 86399))
-    logger.debug("[WebUI-availability] get_page, range: %d - %d", range_start, range_end)
+    logger.debug("get_page, range: %d - %d", range_start, range_end)
 
     records = [
         _get_availability(elt=host, range_start=range_start, range_end=range_end) for host in hosts

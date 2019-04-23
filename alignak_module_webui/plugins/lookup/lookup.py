@@ -24,7 +24,10 @@
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -37,10 +40,10 @@ def lookup():
     name = query
     user = app.request.environ['USER']
 
-    logger.debug("[WebUI] lookup: %s", name)
+    logger.debug("lookup: %s", name)
 
     if '/' in name:
-        logger.debug("[WebUI] lookup services for %s", name)
+        logger.debug("lookup services for %s", name)
         splitted = name.split('/')
         hname = splitted[0]
         filtered_services = app.datamgr.get_host_services(hname, user)

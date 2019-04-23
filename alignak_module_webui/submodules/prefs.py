@@ -8,7 +8,10 @@ import time
 
 import pymongo
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 from .metamodule import MetaModule
 
@@ -31,14 +34,14 @@ class PrefsMetaModule(MetaModule):
         self.module = None
         if modules:
             if len(modules) > 1:
-                logger.warning("[WebUI] Too much prefs modules declared (%s > 1). Using %s.",
+                logger.warning("Too much prefs modules declared (%s > 1). Using %s.",
                                len(modules), modules[0])
             self.module = modules[0]
         else:
             try:
                 self.module = MongoDBPreferences(app.modconf)
             except Exception as exp:
-                logger.warning("[WebUI] %s", str(exp))
+                logger.warning("%s", str(exp))
 
     def is_available(self):
         if isinstance(self.module, MongoDBPreferences):
@@ -80,11 +83,11 @@ class MongoDBPreferences(object):
 
     def __init__(self, mod_conf):
         self.uri = getattr(mod_conf, "uri", "mongodb://localhost")
-        logger.info("[WebUI-MongoDBPreferences] mongo uri: %s", self.uri)
+        logger.info("[-MongoDBPreferences] mongo uri: %s", self.uri)
 
         self.replica_set = getattr(mod_conf, "replica_set", None)
         if self.replica_set and int(pymongo.version[0]) < 3:
-            logger.error("[WebUI-MongoDBPreferences] Can not initialize module with "
+            logger.error("[MongoDBPreferences] Can not initialize module with "
                          "replica_set because your pymongo lib is too old. "
                          "Please install it with a 3.x+ version from "
                          "https://pypi.python.org/pypi/pymongo")
@@ -93,7 +96,7 @@ class MongoDBPreferences(object):
         self.database = getattr(mod_conf, "database", "shinken")
         self.username = getattr(mod_conf, "username", None)
         self.password = getattr(mod_conf, "password", None)
-        logger.info("[WebUI-MongoDBPreferences] database: %s, user: %s",
+        logger.info("[MongoDBPreferences] database: %s, user: %s",
                     self.database, self.username)
 
         self.mongodb_fsync = getattr(mod_conf, "mongodb_fsync", "True") == "True"
@@ -103,7 +106,7 @@ class MongoDBPreferences(object):
         self.db = None
 
         if self.uri:
-            logger.info("[WebUI-MongoDBPreferences] Trying to open a Mongodb connection to %s, database: %s",
+            logger.info("[MongoDBPreferences] Trying to open a Mongodb connection to %s, database: %s",
                         self.uri, self.database)
             self.open()
         else:
@@ -115,7 +118,7 @@ class MongoDBPreferences(object):
         try:
             from pymongo import MongoClient
         except ImportError:
-            logger.error("[WebUI-MongoDBPreferences] Can not import pymongo.MongoClient")
+            logger.error("[MongoDBPreferences] Can not import pymongo.MongoClient")
             raise
 
         try:
@@ -124,27 +127,27 @@ class MongoDBPreferences(object):
                                        fsync=self.mongodb_fsync)
             else:
                 self.con = MongoClient(self.uri, fsync=self.mongodb_fsync)
-            logger.info("[WebUI-MongoDBPreferences] connected to mongodb: %s", self.uri)
+            logger.info("[MongoDBPreferences] connected to mongodb: %s", self.uri)
 
             self.db = getattr(self.con, self.database)
-            logger.info("[WebUI-MongoDBPreferences] connected to the database: %s", self.database)
+            logger.info("[MongoDBPreferences] connected to the database: %s", self.database)
 
             if self.username and self.password:
                 self.db.authenticate(self.username, self.password)
-                logger.info("[WebUI-MongoDBPreferences] user authenticated: %s", self.username)
+                logger.info("[MongoDBPreferences] user authenticated: %s", self.username)
 
             # Update a document test item in the collection to confirm correct connection
-            logger.info("[WebUI-MongoDBPreferences] updating connection test item in the collection ...")
+            logger.info("[MongoDBPreferences] updating connection test item in the collection ...")
             self.db.ui_user_preferences.update_one({"_id": "test-ui_prefs"},
                                                    {"$set": {"last_test": time.time()}},
                                                    upsert=True)
-            logger.info("[WebUI-MongoDBPreferences] updated connection test item")
+            logger.info("[MongoDBPreferences] updated connection test item")
 
             self.is_connected = True
-            logger.info("[WebUI-MongoDBPreferences] database connection established")
+            logger.info("[MongoDBPreferences] database connection established")
         except Exception as exp:
-            logger.error("[WebUI-MongoDBPreferences] Exception: %s", str(exp))
-            logger.debug("[WebUI-MongoDBPreferences] Back trace of this kill: %s", traceback.format_exc())
+            logger.error("[MongoDBPreferences] Exception: %s", str(exp))
+            logger.debug("[MongoDBPreferences] Back trace of this kill: %s", traceback.format_exc())
             # Depending on exception type, should raise ...
             self.is_connected = False
             raise
@@ -162,19 +165,19 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[WebUI-MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
                 return None
 
         try:
             doc = self.db.ui_user_preferences.find_one({"_id": "shinken-global"})
         except Exception as exp:
-            logger.warning("[WebUI-MongoDBPreferences] Exception: %s", str(exp))
+            logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False
             return None
 
         # Maybe it"s a new entry or missing this parameter, bail out
         if not doc or key not in doc:
-            logger.debug("[WebUI-MongoDBPreferences] new parameter of not stored preference: %s", key)
+            logger.debug("[MongoDBPreferences] new parameter of not stored preference: %s", key)
             return None
 
         return doc.get(key)
@@ -186,17 +189,17 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[WebUI-MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
                 return None
 
         if not user:
-            # logger.error("[WebUI-MongoDBPreferences]: error get_ui_user_preference, no defined user")
+            # logger.error("[MongoDBPreferences]: error get_ui_user_preference, no defined user")
             return None
 
         try:
             doc = self.db.ui_user_preferences.find_one({"_id": user.contact_name})
         except Exception as exp:
-            logger.warning("[WebUI-MongoDBPreferences] Exception: %s", str(exp))
+            logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False
             return None
 
@@ -206,7 +209,7 @@ class MongoDBPreferences(object):
 
         # Maybe it"s a new entry or missing this parameter, bail out
         if not doc or key not in doc:
-            logger.debug("[WebUI-MongoDBPreferences] new parameter or not stored preference: %s", key)
+            logger.debug("[MongoDBPreferences] new parameter or not stored preference: %s", key)
             return None
 
         return doc.get(key)
@@ -218,11 +221,11 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[WebUI-MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
                 return
 
         if not user:
-            # logger.warning("[WebUI-MongoDBPreferences] error set_ui_user_preference, no user!")
+            # logger.warning("[MongoDBPreferences] error set_ui_user_preference, no user!")
             return
 
         try:
@@ -231,9 +234,9 @@ class MongoDBPreferences(object):
                                                        {"$set": {key: value}}, upsert=True)
             if not r:
                 # This should never happen but log for alerting!
-                logger.warning("[WebUI-MongoDBPreferences] failed updating user preference: %s", key)
+                logger.warning("[MongoDBPreferences] failed updating user preference: %s", key)
         except Exception as exp:
-            logger.warning("[WebUI-MongoDBPreferences] Exception: %s", str(exp))
+            logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False
 
     def set_ui_common_preference(self, key, value):
@@ -243,7 +246,7 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[WebUI-MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
                 return
 
         try:
@@ -253,7 +256,7 @@ class MongoDBPreferences(object):
                                                        upsert=True)
             if not r:
                 # This should never happen but log for alerting!
-                logger.warning("[WebUI-MongoDBPreferences] failed updating common preference: %s", key)
+                logger.warning("[MongoDBPreferences] failed updating common preference: %s", key)
         except Exception as exp:
-            logger.warning("[WebUI-MongoDBPreferences] Exception: %s", str(exp))
+            logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False

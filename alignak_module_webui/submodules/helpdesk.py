@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 from .metamodule import MetaModule
 
@@ -24,7 +27,7 @@ class HelpdeskMetaModule(MetaModule):
         self.module = None
         if modules:
             if len(modules) > 1:
-                logger.warning('[WebUI] Too much helpdesk modules declared (%s > 1). Using %s.',
+                logger.warning('Too much helpdesk modules declared (%s > 1). Using %s.',
                                len(modules), modules[0])
             self.module = modules[0]
 

@@ -26,7 +26,10 @@ import os
 
 from config_parser import ConfigParser
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Get plugin's parameters from configuration file (not useful currently but future ideas ...)
 params = {

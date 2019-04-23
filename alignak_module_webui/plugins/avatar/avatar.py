@@ -90,9 +90,18 @@ def get_svg_avatar(name, size=256):
 
 def get_gravatar_url(email, size=256, default='404'):
     try:
-        import urllib.request, urllib.error, urllib.parse
-        import urllib.request, urllib.parse, urllib.error
+        try:
+            from urllib.parse import urlparse, urlencode
+            from urllib.request import urlopen, Request
+            from urllib.error import HTTPError
+        except ImportError:
+            from urlparse import urlparse
+            from urllib import urlencode
+            from urllib2 import urlopen, Request, HTTPError
 
+        # import urllib.request, urllib.error, urllib.parse
+        # import urllib.request, urllib.parse, urllib.error
+        #
         parameters = {'s': size, 'd': default}
         url = "https://secure.gravatar.com/avatar/%s?%s" % (
             hashlib.md5(email.lower()).hexdigest(), urllib.parse.urlencode(parameters)

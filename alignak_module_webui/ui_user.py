@@ -42,7 +42,7 @@ class User(Contact):
         self.session = session
         for dictionary in information:
             for key in dictionary:
-                logger.debug("[WebUI] user information: %s = %s", key, dictionary[key])
+                logger.debug("user information: %s = %s", key, dictionary[key])
                 setattr(self, key, dictionary[key])
 
     def get_session(self):

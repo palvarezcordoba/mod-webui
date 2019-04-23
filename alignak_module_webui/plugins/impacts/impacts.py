@@ -24,7 +24,10 @@
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 import time
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Global value that will be changed by the main app
 app = None

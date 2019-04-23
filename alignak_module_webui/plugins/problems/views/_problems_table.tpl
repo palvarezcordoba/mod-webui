@@ -2,7 +2,7 @@
   <tbody>
     %for pb in pbs:
     <tr>
-    %if isinstance(pb, unicode):
+    %if isinstance(pb, str):
       <td width="110px">
       {{pb}}
       </td>

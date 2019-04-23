@@ -19,7 +19,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -32,9 +35,9 @@ def show_minemap():
     search = app.request.query.get('search', "type:host")
     if "type:host" not in search:
         search = "type:host " + search
-    logger.debug("[WebUI-minemap] search parameters '%s'", search)
+    logger.debug("search parameters '%s'", search)
     items = app.datamgr.search_hosts_and_services(search, user)
-    logger.info("[WebUI-minemap] got %d matching items: %s", len(items), items)
+    logger.debug("got %d matching items: %s", len(items), items)
 
     # Fetch elements per page preference for user, default is 25
     elts_per_page = app.prefs_module.get_ui_user_preference(user, 'elts_per_page', 25)

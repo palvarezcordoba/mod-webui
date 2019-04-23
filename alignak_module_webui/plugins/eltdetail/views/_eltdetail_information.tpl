@@ -265,7 +265,7 @@
          %end
       %end
 
-        %tags = elt.get_service_tags() if elt_type=='service' else elt.get_host_tags()
+        %tags = elt.get_service_tags() if elt_type=='service' else elt.tags
         %if tags:
         %tag='stag' if elt_type=='service' else 'htag'
         <h4 class="page-header"><i class="fas fa-tag"></i> Tags</h4>

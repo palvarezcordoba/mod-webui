@@ -57,7 +57,11 @@ from alignak.objects.brokerlink import BrokerLink, BrokerLinks
 from alignak.objects.receiverlink import ReceiverLink, ReceiverLinks
 
 from alignak.message import Message
-from alignak.log import logger
+
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 
 # Class for a Regenerator. It will get broks, and "regenerate" real objects
@@ -555,7 +559,6 @@ class Regenerator(object):
             # self.linkify_host_and_hosts(h, 'parent_dependencies')
             # self.linkify_host_and_hosts(h, 'child_dependencies')
             self.linkify_host_and_hosts(h, 'parents')
-            self.linkify_host_and_hosts(h, 'childs')
             self.linkify_dict_srv_and_hosts(h, 'parent_dependencies')
             self.linkify_dict_srv_and_hosts(h, 'child_dependencies')
 
@@ -1073,7 +1076,7 @@ class Regenerator(object):
         # update
         nws = c.notificationways
         if nws and not isinstance(nws, list):
-            logger.error("[WebUI] Contact %s, bad formed notification ways, ignoring!", c.get_name())
+            logger.error("Contact %s, bad formed notification ways, ignoring!", c.get_name())
             return
 
         if nws and not isinstance(nws[0], NotificationWay):
@@ -1085,10 +1088,10 @@ class Regenerator(object):
                     if nw_uuid == nw.get_name() or nw_uuid == nw.uuid:
                         break
                 else:
-                    logger.warning("[WebUI] Contact %s has an unknown NW: %s", c.get_name(), nws)
+                    logger.warning("Contact %s has an unknown NW: %s", c.get_name(), nws)
                     continue
 
-                logger.debug("[WebUI] Contact %s, found the NW: %s", c.get_name(), nw.__dict__)
+                logger.debug("Contact %s, found the NW: %s", c.get_name(), nw.__dict__)
 
                 # Linking the notification way with commands
                 self.linkify_commands(nw, 'host_notification_commands')
@@ -1379,14 +1382,11 @@ class Regenerator(object):
                       'check_period', 'event_handler',
                       'maintenance_period', 'realm', 'customs', 'escalations']
 
-        # some are only use when a topology change happened
+        # some are only used when a topology change happened
         toplogy_change = b.data['topology_change']
         if not toplogy_change:
             # No childs property in Alignak hosts
-            if ALIGNAK:
-                clean_prop.extend(['parents', 'child_dependencies', 'parent_dependencies'])
-            else:
-                clean_prop.extend(['childs', 'parents', 'child_dependencies', 'parent_dependencies'])
+            clean_prop.extend(['parents', 'child_dependencies', 'parent_dependencies'])
 
         for prop in clean_prop:
             del data[prop]
@@ -1403,7 +1403,6 @@ class Regenerator(object):
         if toplogy_change:
             logger.debug("Topology change for %s %s", host.get_name(), host.parent_dependencies)
             self.linkify_host_and_hosts(host, 'parents')
-            self.linkify_host_and_hosts(host, 'childs')
             self.linkify_dict_srv_and_hosts(host, 'parent_dependencies')
             self.linkify_dict_srv_and_hosts(host, 'child_dependencies')
 

@@ -1,3 +1,8 @@
+%try:
+    %from urllib.parse import urlparse, urlencode
+%except ImportError:
+    %from urllib import urlencode
+
 %setdefault('display_steps_form', False)
 %setdefault('div_class', "pull-right")
 %setdefault('ul_class', "")
@@ -76,8 +81,6 @@
 
   %if navi and len(navi) > 1:
   <ul class="pagination {{ ul_class }}" >
-
-    %from urllib import urlencode
 
     %for name, start, end, is_current in navi:
     %if is_current:

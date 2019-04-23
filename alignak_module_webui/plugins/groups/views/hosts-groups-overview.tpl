@@ -126,7 +126,7 @@
 
       %even='alt'
       %for group in hostgroups:
-         %if group.has('level') and group.level != level:
+         %if getattr(group, 'level', -1) != level:
          %continue
          %end
 
@@ -153,7 +153,7 @@
                <a class="btn btn-default btn-xs" href="hosts-groups?level={{int(level+1)}}&parent={{group.get_name()}}" title="View contained groups"><i class="fas fa-angle-double-down"></i></a>
                %end
 
-               %if group.has('level') and group.level > 0:
+               %if getattr(group, 'level', -1) > 0:
                <a class="btn btn-default btn-xs" href="hosts-groups?level={{int(level-1)}}" title="View parent group"><i class="fas fa-angle-double-up"></i></a>
                %end
 
@@ -183,7 +183,7 @@
                <a class="btn btn-default btn-xs" href="hosts-groups?level={{int(level+1)}}&parent={{group.get_name()}}" title="View contained groups"><i class="fas fa-angle-double-down"></i></a>
                %end
 
-               %if group.has('level') and group.level > 0:
+               %if getattr(group, 'level', -1) > 0:
                <a class="btn btn-default btn-xs" href="hosts-groups?level={{int(level-1)}}" title="View parent group"><i class="fas fa-angle-double-up"></i></a>
                %end
 

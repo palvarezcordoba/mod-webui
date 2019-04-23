@@ -28,7 +28,10 @@
 import re
 import time
 from alignak.external_command import ExternalCommand, ExternalCommandManager
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 # Will be populated by the UI with it's own value
 app = None
@@ -85,13 +88,13 @@ def get_page(cmd=None):
 
     now = subsNOW()
     elts = cmd.split('/')
-    cmd_name = elts[0]
+    cmd_name = elts[0].lower()
     cmd_args = elts[1:]
-    logger.info("[WebUI-actions] got command: %s with args: %s.", cmd_name, cmd_args)
+    logger.info("[actions] got command: %s with args: %s.", cmd_name, cmd_args)
 
     # Check if the command exist in the Shinken external command list
     if cmd_name not in ExternalCommandManager.commands:
-        logger.error("[WebUI-actions] unknown command: %s", cmd_name)
+        logger.error("[actions] unknown command: %s", cmd_name)
         return forge_response(callback, 404, 'Unknown command %s' % cmd_name)
 
     try:
@@ -101,7 +104,7 @@ def get_page(cmd=None):
 
     # Expand macros
     extcmd = expand_macros(extcmd)
-    logger.debug("[WebUI-actions] external command: %s.", extcmd)
+    logger.debug("[actions] external command: %s.", extcmd)
     e = ExternalCommand(extcmd)
     app.push_external_command(e)
 

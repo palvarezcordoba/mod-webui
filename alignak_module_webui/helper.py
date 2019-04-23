@@ -29,24 +29,13 @@ import copy
 import math
 import operator
 import re
+import json
 
 from collections import OrderedDict
-
-try:
-    import json
-except ImportError:
-    # For old Python version, load
-    # simple json (it can be hard json?! It's 2 functions guy!)
-    try:
-        import simplejson as json
-    except ImportError:
-        print("Error: you need the json or simplejson module")
-        raise
 
 # from alignak.misc.sorter import hst_srv_sort
 from alignak.misc.perfdata import PerfDatas
 from alignak.macroresolver import MacroResolver
-from alignak.log import logger
 
 
 # pylint: disable=no-self-use
@@ -291,7 +280,7 @@ class Helper(object):
         return "/%s/%s" % (obj.__class__.my_type, obj.get_full_name())
 
     def get_fa_icon_state(self, obj=None, cls='host', state='UP', disabled=False, label='', use_title=True):
-        '''
+        """
             Get an Html formatted string to display host/service state
 
             If obj is specified, obj class and state are used.
@@ -307,7 +296,7 @@ class Helper(object):
 
             Returns a span element containing a Font Awesome icon that depicts
            consistently the host/service current state (see issue #147)
-        '''
+        """
         state = obj.state.upper() if obj is not None else state.upper()
         flapping = (obj and obj.is_flapping) or state == 'FLAPPING'
         ack = (obj and obj.problem_has_been_acknowledged) or state == 'ACK'
@@ -429,7 +418,7 @@ class Helper(object):
 
         # pylint: disable=undefined-variable
         # Because xrange...
-        for i in range(current_page - (nb_max_items / 2), current_page + 1 + (nb_max_items / 2)):
+        for i in range(current_page - int(nb_max_items / 2), current_page + 1 + int(nb_max_items / 2)):
             if i < 0:
                 continue
             is_current = (i == current_page)
@@ -769,7 +758,7 @@ class Helper(object):
             dr_start = time.strftime("%d %b %Y", time.localtime(dr_start))
             dr_end = time.strftime("%d %b %Y", time.localtime(dr_end))
             if dr_start == dr_end:
-                content += '''<dd>%s:</dd>''' % (dr_start)
+                content += '''<dd>%s:</dd>''' % dr_start
             else:
                 content += '''<dd>From: %s, to: %s</dd>''' % (dr_start, dr_end)
 
@@ -834,13 +823,14 @@ class Helper(object):
                 continue
 
             # Replace MACROS in url, title and description
+            # todo: some missing arguments in the function calls... all replaced with empty lists
             if hasattr(obj, 'get_data_for_checks'):
                 if url:
                     url = MacroResolver().resolve_simple_macros_in_string(
-                        url, obj.get_data_for_checks())
+                        url, obj.get_data_for_checks([]), [], [])
                 if title:
                     title = MacroResolver().resolve_simple_macros_in_string(
-                        title, obj.get_data_for_checks())
+                        title, obj.get_data_for_checks([]), [], [])
 
             link = 'href="%s" target="_blank" ' % url
             if not url:
@@ -986,6 +976,162 @@ class Helper(object):
             return 1
 
         return 0
+
+    def get_event_icon(self, event, disabled=False, label='', use_title=True):
+        '''
+            Get an Html formatted string to display a monitoring event
+
+            If disabled is True, the font used is greyed
+
+            If label is empty, only an icon is returned
+            If label is set as 'state', the icon title is used as text
+            Else, the content of label is used as text near the icon.
+
+            If use_title is False, do not include title attribute.
+
+            Returns a span element containing a Font Awesome icon that depicts
+           consistently the event and its state
+        '''
+        cls = event.get('type', 'unknown').lower()
+        state = event.get('state', 'n/a').upper()
+        state_type = event.get('state_type', 'n/a').upper()
+        hard = (state_type == 'HARD')
+
+        # Icons depending upon element and real state ...
+        # ; History
+        icons = {
+            "unknown": {
+                "class": "history_Unknown",
+                "text": "Unknown event",
+                "icon": "question"
+            },
+
+            "retention_load": {
+                "class": "history_RetentionLoad",
+                "text": "Retention load",
+                "icon": "save"
+            },
+            "retention_save": {
+                "class": "history_RetentionSave",
+                "text": "Retention save",
+                "icon": "save"
+            },
+
+            "alert": {
+                "class": "history_Alert",
+                "text": "Monitoring alert",
+                "icon": "bolt"
+            },
+
+            "notification": {
+                "class": "history_Notification",
+                "text": "Monitoring notification sent",
+                "icon": "paper-plane"
+            },
+
+            "check_result": {
+                "class": "history_CheckResult",
+                "text": "Check result",
+                "icon": "bolt"
+            },
+
+            "comment": {
+                "class": "history_WebuiComment",
+                "text": "WebUI comment",
+                "icon": "send"
+            },
+            "timeperiod_transition": {
+                "class": "history_TimeperiodTransition",
+                "text": "Timeperiod transition",
+                "icon": "clock-o"
+            },
+            "external_command": {
+                "class": "history_ExternalCommand",
+                "text": "External command",
+                "icon": "wrench"
+            },
+
+            "event_handler": {
+                "class": "history_EventHandler",
+                "text": "Monitoring event handler",
+                "icon": "bolt"
+            },
+            "flapping_start": {
+                "class": "history_FlappingStart",
+                "text": "Monitoring flapping start",
+                "icon": "flag"
+            },
+            "flapping_stop": {
+                "class": "history_FlappingStop",
+                "text": "Monitoring flapping stop",
+                "icon": "flag-o"
+            },
+            "downtime_start": {
+                "class": "history_DowntimeStart",
+                "text": "Monitoring downtime start",
+                "icon": "ambulance"
+            },
+            "downtime_cancelled": {
+                "class": "history_DowntimeCancelled",
+                "text": "Monitoring downtime cancelled",
+                "icon": "ambulance"
+            },
+            "downtime_end": {
+                "class": "history_DowntimeEnd",
+                "text": "Monitoring downtime stopped",
+                "icon": "ambulance"
+            },
+            "acknowledge_start": {
+                "class": "history_AckStart",
+                "text": "Monitoring acknowledge start",
+                "icon": "check"
+            },
+            "acknowledge_cancelled": {
+                "class": "history_AckCancelled",
+                "text": "Monitoring acknowledge cancelled",
+                "icon": "check"
+            },
+            "acknowledge_end": {
+                "class": "history_AckEnd",
+                "text": "Monitoring acknowledge expired",
+                "icon": "check"
+            },
+        }
+
+        back = '''<i class="fa fa-circle fa-stack-2x font-%s"></i>''' \
+               % (state.lower() if not disabled else 'greyed')
+
+        icon_color = 'fa-inverse'
+        icon_style = ""
+        if not hard:
+            icon_style = 'style="opacity: 0.5"'
+
+        try:
+            icon = icons[cls]['icon']
+            title = icons[cls]['text']
+        except KeyError:
+            cls = 'unknown'
+            icon = icons[cls]['icon']
+            title = icons[cls]['text']
+
+        front = '''<i class="fa fa-%s fa-stack-1x %s"></i>''' % (icon, icon_color)
+
+        if use_title:
+            icon_text = '''<span class="fa-stack" %s title="%s">%s%s</span>''' % (icon_style, title, back, front)
+        else:
+            icon_text = '''<span class="fa-stack" %s>%s%s</span>''' % (icon_style, back, front)
+
+        if label == '':
+            return icon_text
+
+        color = state.lower() if not disabled else 'greyed'
+        if label == 'title':
+            label = title
+        return '''
+          <span class="font-%s">
+             %s&nbsp;<span class="num">%s</span>
+          </span>
+          ''' % (color, icon_text, label)
 
 
 helper = Helper()

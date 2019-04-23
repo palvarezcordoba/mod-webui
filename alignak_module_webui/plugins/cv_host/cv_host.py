@@ -30,7 +30,10 @@ import re
 from config_parser import ConfigParser
 
 from alignak.misc.perfdata import PerfDatas
-from alignak.log import logger
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 plugin_name = os.path.splitext(os.path.basename(__file__))[0]
 
@@ -60,10 +63,10 @@ params = {
 
 
 def _findServiceByName(host, service):
-    logger.debug("[WebUI-cvhost], search service %s", service)
+    logger.debug("[cvhost], search service %s", service)
     for s in host.services:
         if re.search(service, s.get_name()):
-            logger.debug("[WebUI-cvhost], found!")
+            logger.debug("[cvhost], found!")
             return s
     return None
 
@@ -74,23 +77,23 @@ def get_disks(h):
 
     s = _findServiceByName(h, params['svc_dsk_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_dsk_used'], m.name) and \
                             re.match(params['svc_dsk_uom'], m.uom):
                         all[m.name] = m.value
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_disks, exception: %s", str(exp))
+            logger.warning("[cvhost] get_disks, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_disks %s", all)
+    logger.debug("[cvhost], get_disks %s", all)
     return state, all
 
 
@@ -100,23 +103,23 @@ def get_memory(h):
 
     s = _findServiceByName(h, params['svc_mem_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_mem_used'], m.name) and \
                             re.match(params['svc_mem_uom'], m.uom):
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
                         all[m.name] = m.value
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_memory, exception: %s", str(exp))
+            logger.warning("[cvhost] get_memory, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_memory %s", all)
+    logger.debug("[cvhost], get_memory %s", all)
     return state, all
 
 
@@ -126,23 +129,23 @@ def get_cpu(h):
 
     s = _findServiceByName(h, params['svc_cpu_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_cpu_used'], m.name) and \
                             re.match(params['svc_cpu_uom'], m.uom):
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
                         all[m.name] = m.value
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_cpu, exception: %s", str(exp))
+            logger.warning("[cvhost] get_cpu, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_cpu %s", all)
+    logger.debug("[cvhost], get_cpu %s", all)
     return state, all
 
 
@@ -152,23 +155,23 @@ def get_load(h):
 
     s = _findServiceByName(h, params['svc_load_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_load_used'], m.name) and \
                             re.match(params['svc_load_uom'], m.uom):
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
                         all[m.name] = m.value
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_load, exception: %s", str(exp))
+            logger.warning("[cvhost] get_load, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_load %s", all)
+    logger.debug("[cvhost], get_load %s", all)
     return state, all
 
 
@@ -179,23 +182,23 @@ def get_network(h):
 
     s = _findServiceByName(h, params['svc_net_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_net_used'], m.name) and \
                             re.match(params['svc_net_uom'], m.uom):
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
                         all[m.name] = m.value
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_network, exception: %s", str(exp))
+            logger.warning("[cvhost] get_network, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_network %s", all)
+    logger.debug("[cvhost], get_network %s", all)
     return state, all
 
 
@@ -205,23 +208,23 @@ def get_printer(h):
 
     s = _findServiceByName(h, params['svc_prn_name'])
     if s:
-        logger.debug("[WebUI-cvhost], found %s", s.get_full_name())
+        logger.debug("[cvhost], found %s", s.get_full_name())
         state = s.state
 
         try:
             p = PerfDatas(s.perf_data)
             for m in p:
                 if m.name and m.value is not None:
-                    logger.debug("[WebUI-cvhost], metric '%s' = %s, uom: %s",
+                    logger.debug("[cvhost], metric '%s' = %s, uom: %s",
                                  m.name, m.value, m.uom)
                     if re.search(params['svc_prn_used'], m.name) and \
                             re.match(params['svc_prn_uom'], m.uom):
-                        logger.debug("[WebUI-cvhost], got '%s' = %s", m.name, m.value)
+                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
                         all[m.name] = m.value
         except Exception as exp:
-            logger.warning("[WebUI-cvhost] get_printer, exception: %s", str(exp))
+            logger.warning("[cvhost] get_printer, exception: %s", str(exp))
 
-    logger.debug("[WebUI-cvhost], get_printer %s", all)
+    logger.debug("[cvhost], get_printer %s", all)
     return state, all
 
 
@@ -246,7 +249,7 @@ def get_services(h):
     # Compute the worst state of all packages
     state = compute_worst_state(all)
 
-    logger.debug("[WebUI-cvhost], get_services %s", all)
+    logger.debug("[cvhost], get_services %s", all)
     return state, all
 
 
@@ -257,7 +260,7 @@ def compute_worst_state(all_states):
     }
     cur_level = 0
     for (k, v) in all_states.items():
-        logger.debug("[WebUI-cvhost], compute_worst_state: %s/%s", k, v)
+        logger.debug("[cvhost], compute_worst_state: %s/%s", k, v)
         level = _ref[v]
         cur_level = max(cur_level, level)
     return {
@@ -273,7 +276,7 @@ def get_page(name, type):
 
     # user = app.check_user_authentication()
 
-    logger.debug("[WebUI-cvhost], get_page for %s, type: '%s'", name, type)
+    logger.debug("[cvhost], get_page for %s, type: '%s'", name, type)
 
     currentdir = os.path.dirname(os.path.realpath(__file__))
     configuration_file = "%s/%s.cfg" % (currentdir, type)
@@ -284,21 +287,21 @@ def get_page(name, type):
         z.update(scp.parse_config(configuration_file))
         params = z
 
-        logger.debug("[WebUI-cvhost] configuration loaded.")
-        logger.debug("[WebUI-cvhost] configuration, load: %s (%s)",
+        logger.debug("[cvhost] configuration loaded.")
+        logger.debug("[cvhost] configuration, load: %s (%s)",
                      params['svc_load_name'], params['svc_load_used'])
-        logger.debug("[WebUI-cvhost] configuration, cpu: %s (%s)",
+        logger.debug("[cvhost] configuration, cpu: %s (%s)",
                      params['svc_cpu_name'], params['svc_cpu_used'])
-        logger.debug("[WebUI-cvhost] configuration, disk: %s (%s)",
+        logger.debug("[cvhost] configuration, disk: %s (%s)",
                      params['svc_dsk_name'], params['svc_dsk_used'])
-        logger.debug("[WebUI-cvhost] configuration, memory: %s (%s)",
+        logger.debug("[cvhost] configuration, memory: %s (%s)",
                      params['svc_mem_name'], params['svc_mem_used'])
-        logger.debug("[WebUI-cvhost] configuration, network: %s (%s)",
+        logger.debug("[cvhost] configuration, network: %s (%s)",
                      params['svc_net_name'], params['svc_net_used'])
-        # logger.info("[WebUI-cvhost] configuration, printer: %s (%s)",
+        # logger.info("[cvhost] configuration, printer: %s (%s)",
         # params['svc_prn_name'], params['svc_prn_used'])
     except Exception as exp:
-        logger.warning("[WebUI-cvhost] configuration file (%s) not available or bad formed: %s",
+        logger.warning("[cvhost] configuration file (%s) not available or bad formed: %s",
                        configuration_file, str(exp))
         app.redirect404()
         # return {
@@ -339,7 +342,7 @@ def get_page(name, type):
     # Then global
     all_states["global"] = compute_worst_state(all_states)
 
-    logger.debug("[WebUI-cvhost] overall state: %s", all_states)
+    logger.debug("[cvhost] overall state: %s", all_states)
 
     return {
         'app': app,
