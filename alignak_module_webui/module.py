@@ -59,9 +59,8 @@ from alignak.basemodule import BaseModule
 # Regenerate objects from the received broks
 from .regenerator import Regenerator
 
-# from alignak.modulesctx import modulesctx
 from alignak.modulesmanager import ModulesManager
-# from alignak.daemon import Daemon
+from alignak.daemon import Daemon
 from alignak.util import to_bool
 
 # Bottle import
@@ -115,9 +114,6 @@ properties = {
 
 # called by the plugin manager to get an instance
 def get_instance(plugin):
-    # Only add template if we CALL webui
-    logger.info("Webui_broker directory: %s", webuimod_dir)
-
     logger.info("configuration: %s", plugin.__dict__)
     instance = WebuiBroker(plugin)
     logger.info("got an instance of Webui_broker for module: %s", plugin.get_name())
@@ -149,9 +145,12 @@ def resolve_auth_secret(modconf):
 
 
 # Class for the WebUI Broker
-class WebuiBroker(BaseModule):
+class WebuiBroker(BaseModule, Daemon):
     def __init__(self, modconf):
+        """modconf is a Module object!"""
         BaseModule.__init__(self, modconf)
+
+        logger.info("Module configuration: %s", modconf.__dict__)
 
         if ALIGNAK_UI_DEBUG:
             logger.warning("Using Bottle Web framework in debug mode.")
@@ -170,10 +169,15 @@ class WebuiBroker(BaseModule):
         self.module_type = getattr(modconf, 'module_type', 'unset')
         self.module_name = getattr(modconf, 'module_name', 'unset')
         self.modules = getattr(modconf, 'modules', [])
+        logger.info("modules: %s", self.modules)
+        self.modules = getattr(modconf, 'my_modules', [])
+        if self.modules and not isinstance(self.modules, list):
+            self.modules = [self.modules]
         if self.modules and not self.modules[0]:
             self.modules = []
+        logger.info("modules: %s", self.modules)
         # todo: set default directory for the modules directory
-        self.modules_dir = getattr(modconf, 'modules_dir', '/var/lib/shinken/modules')
+        self.modules_dir = getattr(modconf, 'modules_dir', './modules')
         logger.info("modules: %s in %s", self.modules, self.modules_dir)
 
         self.plugins = []
@@ -408,11 +412,12 @@ class WebuiBroker(BaseModule):
         # to avoid too many testings...
         self.debug_output = []
 
-        logger.info("configured modules %s", [m.get_name() for m in self.modules])
+        # logger.info("configured modules: %s", [m.get_name() for m in self.modules])
+        logger.info("configured modules: %s", self.modules)
         # todo: check this!
         # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
         self.modules_manager = ModulesManager(self)
-        # self.modules_manager.modules = self.modules
+        self.modules_manager.modules = self.modules
         # This function is loading all the installed 'webui' daemon modules...
         # self.do_load_modules(self.modules)
         if self.modules_manager.load_and_init(self.modules):
@@ -584,6 +589,7 @@ class WebuiBroker(BaseModule):
             # Before checking again, we should wait a bit
             # like 1ms
             time.sleep(0.001)
+        # logger.info("Exiting the lock/writer thread...")
 
     def wait_for_no_readers(self):
         """
@@ -605,14 +611,14 @@ class WebuiBroker(BaseModule):
                 break
             # Ok, we cannot run now, wait a bit
             self.global_lock.release()
-            # Before checking again, we should wait a bit
-            # like 1ms
+            # Before checking again, we should wait a bit (1ms)
             time.sleep(0.001)
             # We should warn if we cannot update broks
             # for more than 30s because it can be not good
             if time.time() - start > 30:
                 logger.warning("wait_for_no_readers, we are in lock/read since more than 30s!")
                 start = time.time()
+        # logger.info("Exiting the lock/reader thread...")
 
     def lockable_function(self, f):
         """
@@ -704,8 +710,7 @@ class WebuiBroker(BaseModule):
 
             logger.debug("time to manage %d broks (time %.2gs)",
                          len(message), time.clock() - start)
-
-        logger.debug("manage_brok_thread end ...")
+        logger.info("Exiting the manage broks thread...")
 
     def fmwk_thread(self):
         """A thread function that periodically gets its state from the Alignak arbiter
@@ -750,8 +755,7 @@ class WebuiBroker(BaseModule):
 
             # Sleep for a while...
             time.sleep(self.alignak_check_period)
-
-        logger.debug("fmwk_thread end ...")
+        logger.info("Exiting the framework status thread...")
 
     def load_plugins(self, plugin_dir):
         """
