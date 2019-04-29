@@ -150,6 +150,9 @@ class WebuiBroker(BaseModule, Daemon):
         """modconf is a Module object!"""
         BaseModule.__init__(self, modconf)
 
+        if getattr(self, 'use_ssl', None) is None:
+            self.use_ssl = False
+
         logger.info("Module configuration: %s", modconf.__dict__)
 
         if ALIGNAK_UI_DEBUG:
