@@ -173,7 +173,7 @@ class WebuiBroker(BaseModule, Daemon):
         self.module_name = getattr(modconf, 'module_name', 'unset')
         self.modules = getattr(modconf, 'modules', [])
         logger.info("modules: %s", self.modules)
-        self.modules = getattr(modconf, 'my_modules', [])
+        # self.modules = getattr(modconf, 'my_modules', [])
         if self.modules and not isinstance(self.modules, list):
             self.modules = [self.modules]
         if self.modules and not self.modules[0]:
@@ -417,41 +417,47 @@ class WebuiBroker(BaseModule, Daemon):
 
         # logger.info("configured modules: %s", [m.get_name() for m in self.modules])
         logger.info("configured modules: %s", self.modules)
-        # todo: check this!
-        # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
+        # # todo: check this!
+        # # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
         self.modules_manager = ModulesManager(self)
         self.modules_manager.modules = self.modules
-        # This function is loading all the installed 'webui' daemon modules...
-        # self.do_load_modules(self.modules)
-        if self.modules_manager.load_and_init(self.modules):
-            if self.modules_manager.instances:
-                logger.info("I correctly loaded my modules: [%s]",
-                            ','.join([inst.name for inst in self.modules_manager.instances]))
-            else:
-                logger.info("I do not have any module")
-        else:  # pragma: no cover, not with unit tests...
-            logger.error("Errors were encountered when checking and loading modules:")
-            for msg in self.modules_manager.configuration_errors:
-                logger.error(msg)
+        # # This function is loading all the installed 'webui' daemon modules...
+        # # self.do_load_modules(self.modules)
+        # if self.modules_manager.load_and_init(self.modules):
+        #     if self.modules_manager.instances:
+        #         logger.info("I correctly loaded my modules: [%s]",
+        #                     ','.join([inst.name for inst in self.modules_manager.instances]))
+        #     else:
+        #         logger.info("I do not have any module")
+        # else:  # pragma: no cover, not with unit tests...
+        #     logger.error("Errors were encountered when checking and loading modules:")
+        #     for msg in self.modules_manager.configuration_errors:
+        #         logger.error(msg)
+        #
+        # if self.modules_manager.configuration_warnings:  # pragma: no cover, not tested
+        #     for msg in self.modules_manager.configuration_warnings:
+        #         logger.warning(msg)
+        #
+        # logger.info("imported %d modules", len(self.modules_manager.instances))
+        #
+        # for inst in self.modules_manager.instances:
+        #     logger.info("loading %s", inst.get_name())
+        #     f = getattr(inst, 'load', None)
+        #     if f and callable(f):
+        #         logger.info("running module load function")
+        #         f(self)
+        # logger.info("loaded modules %s", [m.get_name() for m in self.modules])
+        #
+        # # We can now output some previously silenced debug output
+        # for debug_log in self.debug_output:
+        #     logger.debug("debug: %s", debug_log)
+        # del self.debug_output
 
-        if self.modules_manager.configuration_warnings:  # pragma: no cover, not tested
-            for msg in self.modules_manager.configuration_warnings:
-                logger.warning(msg)
-
-        logger.info("imported %d modules", len(self.modules_manager.instances))
-
-        for inst in self.modules_manager.instances:
-            logger.info("loading %s", inst.get_name())
-            f = getattr(inst, 'load', None)
-            if f and callable(f):
-                logger.info("running module load function")
-                f(self)
-        logger.info("loaded modules %s", [m.get_name() for m in self.modules])
-
-        # We can now output some previously silenced debug output
-        for debug_log in self.debug_output:
-            logger.debug("debug: %s", debug_log)
-        del self.debug_output
+        # Ok now start, or restart them!
+        # Set modules, init them and start external ones
+        self.do_load_modules(self.modules)
+        # and start external modules too
+        self.modules_manager.start_external_instances()
 
         # Check if the Bottle view dir really exist
         if not os.path.exists(bottle.TEMPLATE_PATH[0]):
