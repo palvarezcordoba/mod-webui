@@ -114,7 +114,6 @@ properties = {
 
 # called by the plugin manager to get an instance
 def get_instance(plugin):
-    logger.info("configuration: %s", plugin.__dict__)
     instance = WebuiBroker(plugin)
     logger.info("got an instance of Webui_broker for module: %s", plugin.get_name())
     return instance
@@ -153,7 +152,9 @@ class WebuiBroker(BaseModule, Daemon):
         if getattr(self, 'use_ssl', None) is None:
             self.use_ssl = False
 
-        logger.info("Module configuration: %s", modconf.__dict__)
+        self.plugins = []
+        self.modconf = modconf
+        logger.debug("module configuration: %s", self.modconf)
 
         if ALIGNAK_UI_DEBUG:
             logger.warning("Using Bottle Web framework in debug mode.")
@@ -161,6 +162,8 @@ class WebuiBroker(BaseModule, Daemon):
         # A daemon must have these properties
         self.type = 'webui'
         self.name = 'webui'
+        self.module_type = getattr(modconf, 'module_type', 'unset')
+        self.module_name = getattr(modconf, 'module_name', 'unset')
 
         # Configure Alignak Arbiter API endpoint
         self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
@@ -169,24 +172,15 @@ class WebuiBroker(BaseModule, Daemon):
         self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
         self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
                                                               self.alignak_events_count)))
-        self.module_type = getattr(modconf, 'module_type', 'unset')
-        self.module_name = getattr(modconf, 'module_name', 'unset')
+        # Web UI modules
         self.modules = getattr(modconf, 'modules', [])
-        logger.info("modules: %s", self.modules)
-        # self.modules = getattr(modconf, 'my_modules', [])
         if self.modules and not isinstance(self.modules, list):
             self.modules = [self.modules]
         if self.modules and not self.modules[0]:
             self.modules = []
-        logger.info("modules: %s", self.modules)
         # todo: set default directory for the modules directory
         self.modules_dir = getattr(modconf, 'modules_dir', './modules')
         logger.info("modules: %s in %s", self.modules, self.modules_dir)
-
-        self.plugins = []
-        self.modconf = modconf
-        logger.info("name: %s", __name__)
-        logger.debug("configuration: %s", self.modconf)
 
         # Web server configuration
         self.host = getattr(modconf, 'host', '0.0.0.0')
@@ -410,17 +404,20 @@ class WebuiBroker(BaseModule, Daemon):
 
         # Modules management
         # ---
-        # I used a large If/Else to avoid breaking the existing behavior but I am quite sure
-        # that the Alignak branch code is fully compatible with Shinken. I prefer separating
-        # to avoid too many testings...
         self.debug_output = []
 
-        # logger.info("configured modules: %s", [m.get_name() for m in self.modules])
         logger.info("configured modules: %s", self.modules)
-        # # todo: check this!
-        # # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
+        # todo: check this!
+        # self.modules_manager = ModulesManager('webui', self.find_modules_path(), [])
         self.modules_manager = ModulesManager(self)
         self.modules_manager.modules = self.modules
+
+        # Ok now start, or restart them!
+        # Set modules, init them and start external ones
+        self.do_load_modules(self.modules)
+        # and start external modules too
+        self.modules_manager.start_external_instances()
+
         # # This function is loading all the installed 'webui' daemon modules...
         # # self.do_load_modules(self.modules)
         # if self.modules_manager.load_and_init(self.modules):
@@ -452,12 +449,6 @@ class WebuiBroker(BaseModule, Daemon):
         # for debug_log in self.debug_output:
         #     logger.debug("debug: %s", debug_log)
         # del self.debug_output
-
-        # Ok now start, or restart them!
-        # Set modules, init them and start external ones
-        self.do_load_modules(self.modules)
-        # and start external modules too
-        self.modules_manager.start_external_instances()
 
         # Check if the Bottle view dir really exist
         if not os.path.exists(bottle.TEMPLATE_PATH[0]):
