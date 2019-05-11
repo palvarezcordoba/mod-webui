@@ -1,14 +1,14 @@
-Alignak GLPI broker Module
-==========================
+Alignak WebUI broker Module
+===========================
 
-*Alignak GLPI module for the Alignak broker*
+*Alignak WebUI module for the Alignak broker*
 
-.. image:: https://landscape.io/github/Alignak-monitoring-contrib/alignak-module-glpi/develop/landscape.svg?style=flat
-    :target: https://landscape.io/github/Alignak-monitoring-contrib/alignak-module-glpi/develop
+.. image:: https://landscape.io/github/mohierf/mod-webui/develop/landscape.svg?style=flat
+mohierf/mod-webui    :target: https://landscape.io/github/mohierf/mod-webui/develop
     :alt: Development code static analysis
 
-.. image:: https://coveralls.io/repos/Alignak-monitoring-contrib/alignak-module-glpi/badge.svg?branch=develop
-    :target: https://coveralls.io/r/Alignak-monitoring-contrib/alignak-module-glpi
+.. image:: https://coveralls.io/repos/mohierf/mod-webui/badge.svg?branch=develop
+    :target: https://coveralls.io/r/mohierf/mod-webui
     :alt: Development code tests coverage
 
 .. image:: https://badge.fury.io/py/alignak_module_glpi.svg
@@ -28,22 +28,6 @@ Installation
 
 The installation of this module will copy some configuration files in the Alignak default configuration directory (eg. */usr/local/share/alignak*). The copied files are located in the default sub-directory used for the modules (eg. *arbiter/modules*).
 
-From Alignak packages repositories
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-More information in the `online Alignak documentation <http://docs.alignak.net>`_. Here is only an abstract...
-
-Debian::
-
-    # Alignak DEB stable packages
-    sudo echo deb https://dl.bintray.com/alignak/alignak-deb-stable xenial main | sudo tee -a /etc/apt/sources.list.d/alignak.list
-    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv D401AB61
-
-    sudo apt-get update
-    sudo apt install python-alignak-module-glpi
-
-CentOS::
-
 From PyPI
 ~~~~~~~~~
 To install the module from PyPI::
@@ -55,7 +39,7 @@ From source files
 ~~~~~~~~~~~~~~~~~
 To install the module from the source files (for developing purpose)::
 
-    git clone https://github.com/Alignak-monitoring-contrib/alignak-module-glpi
+    git clone https://github.com/mohierf/mod-webui
     cd alignak-module-nsglpica
     sudo pip install . -e
 

@@ -1,8 +1,11 @@
+dist: xenial   # required for Python >= 3.7
 language: python
 sudo: true
 python:
+  - '3.7'
+  - '3.6'
+  - '3.5'
   - "2.7"
-  # - "2.6"
 
 services:
   - mongodb
