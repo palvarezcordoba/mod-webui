@@ -8,6 +8,8 @@ import time
 
 import pymongo
 
+from .metamodule import MetaModule
+
 # Specific logger configuration
 import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
@@ -298,7 +300,7 @@ class JsonPreferences(object):
                         self.uri, self.database)
             self.open()
         else:
-            logger.warning("You do not have any MongoDB connection for user's preferences storage module installed. "
+            logger.warning("You do not have any MongoDB connection for user's preferences storage module. "
                            "The Web UI dashboard and user's preferences will not be saved.")
 
     def open(self):

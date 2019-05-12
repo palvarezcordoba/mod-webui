@@ -6,12 +6,12 @@ import traceback
 
 import pymongo
 
+from .metamodule import MetaModule
+
 # Specific logger configuration
 import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
-
-from .metamodule import MetaModule
 
 
 class LogsMetaModule(MetaModule):
