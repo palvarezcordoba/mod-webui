@@ -774,7 +774,7 @@ class WebuiBroker(BaseModule, Daemon):
             return
 
         plugin_dirs = [fname for fname in os.listdir(plugin_dir)
-                       if fname not in ['__pycache'] and
+                       if fname not in ['__pycache__'] and
                        os.path.isdir(os.path.join(plugin_dir, fname))]
 
         # todo: Hmmm..... confirm it is necessary!
