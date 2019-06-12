@@ -72,6 +72,7 @@ class Regenerator(object):
         # Our Real datas
         self.configs = {}
         self.hosts = Hosts([])
+        self.hosts_templates = Hosts([])
         self.services = Services([])
         self.notificationways = NotificationWays([])
         self.contacts = Contacts([])
@@ -94,6 +95,7 @@ class Regenerator(object):
 
         # And in progress one
         self.inp_hosts = {}
+        self.inp_hosts_templates = {}
         self.inp_services = {}
         self.inp_hostgroups = {}
         self.inp_servicegroups = {}
@@ -180,7 +182,6 @@ class Regenerator(object):
         # WebUI - do not make a log because Shinken creates a brok per log!
         if not manage:
             return
-
 
         # WebUI - Shinken uses id as a brok identifier whereas Alignak uses uuid
         # the idea is to make every regenerated object have both identifiers. It
@@ -271,13 +272,14 @@ class Regenerator(object):
 
         self.configs[inst_id]['_all_data_received'] = True
 
-        # We consider the regenerator as initilized once a scheduler has finished to push its data!
+        # We consider the regenerator as initialized once a scheduler has finished to push its data!
         self.initialized = True
 
         # Try to load the in progress list and make them available for
         # finding
         try:
             inp_hosts = self.inp_hosts[inst_id]
+            inp_hosts_templates = self.inp_hosts_templates[inst_id]
             inp_hostgroups = self.inp_hostgroups[inst_id]
             inp_contactgroups = self.inp_contactgroups[inst_id]
             inp_services = self.inp_services[inst_id]
@@ -291,16 +293,16 @@ class Regenerator(object):
         # because it was more logical to linkify timeperiods and contacts
         # stuff before hosts and services
 
-        # WebUI - linkiify timeperiods
+        # WebUI - linkify timeperiods
         for tp in self.timeperiods:
             new_exclude = []
             for ex in tp.exclude:
-                exname = ex.timeperiod_name
-                t = self.timeperiods.find_by_name(exname)
+                excluded_name = ex.timeperiod_name
+                t = self.timeperiods.find_by_name(excluded_name)
                 if t:
                     new_exclude.append(t)
                 else:
-                    logger.warning("Unknown TP %s for TP: %s", exname, tp)
+                    logger.warning("Unknown TP %s for TP: %s", excluded_name, tp)
             tp.exclude = new_exclude
 
         # WebUI - linkify contacts groups with their contacts
@@ -394,6 +396,27 @@ class Regenerator(object):
         for group in self.hostgroups:
             logger.debug("- members: %s / %s", group.members, group.hostgroup_members)
 
+        # Manage hosts templates
+        self.hosts.remove_templates()
+        for h in inp_hosts_templates:
+            # Now link Command() objects
+            self.linkify_a_command(h, 'check_command')
+            self.linkify_a_command(h, 'event_handler')
+            self.linkify_a_command(h, 'snapshot_command')
+
+            # Now link timeperiods
+            self.linkify_a_timeperiod_by_name(h, 'notification_period')
+            self.linkify_a_timeperiod_by_name(h, 'check_period')
+            self.linkify_a_timeperiod_by_name(h, 'maintenance_period')
+            self.linkify_a_timeperiod_by_name(h, 'snapshot_period')
+
+            # And link contacts too
+            self.linkify_contacts(h, 'contacts')
+            logger.debug("Host template %s has contacts: %s", h.get_name(), h.contacts)
+
+            # We can really declare this host template
+            self.hosts.add_template(h)
+
         # Now link hosts with their hosts groups, commands and timeperiods
         for h in inp_hosts:
             if h.hostgroups:
@@ -416,13 +439,13 @@ class Regenerator(object):
             # Now link Command() objects
             self.linkify_a_command(h, 'check_command')
             self.linkify_a_command(h, 'event_handler')
+            self.linkify_a_command(h, 'snapshot_command')
 
             # Now link timeperiods
             self.linkify_a_timeperiod_by_name(h, 'notification_period')
             self.linkify_a_timeperiod_by_name(h, 'check_period')
-
-            # WebUI - todo, check if some other periods are necessary
             self.linkify_a_timeperiod_by_name(h, 'maintenance_period')
+            self.linkify_a_timeperiod_by_name(h, 'snapshot_period')
 
             # And link contacts too
             self.linkify_contacts(h, 'contacts')
@@ -574,6 +597,7 @@ class Regenerator(object):
 
         # clean old objects
         del self.inp_hosts[inst_id]
+        del self.inp_hosts_templates[inst_id]
         del self.inp_hostgroups[inst_id]
         del self.inp_contactgroups[inst_id]
         del self.inp_services[inst_id]
@@ -586,6 +610,7 @@ class Regenerator(object):
             for item in getattr(self, "%ss" % item_type):
                 logger.debug("- %s", item)
 
+        logger.info("Got %d hosts templates", len(inp_hosts_templates))
         logger.info("Linking objects together, end. Duration: %s", time.time() - start)
 
     def linkify_a_command(self, o, prop):
@@ -826,11 +851,12 @@ class Regenerator(object):
 
         now = time.time()
         if c_id in self.configs:
-            # WebUI - it may happen that the same scheduler sends several times its initial status brok.
+            # It may happen that the same scheduler sends several times its initial status brok.
             # Let's manage this and only consider one brok per minute!
             # We already have a configuration for this scheduler instance
             if now - self.configs[c_id]['_timestamp'] < 60:
-                logger.info("Got near initial program status for %s. Ignoring this information.", c_name)
+                logger.info("Got near initial program status for %s. Ignoring this information.",
+                            c_name)
                 return
 
         # Clean all in_progress things.
@@ -864,7 +890,7 @@ class Regenerator(object):
         self.configs[c_id] = data
 
         # We should clean all previously added hosts and services
-        logger.debug("Cleaning hosts/service of %s", c_id)
+        logger.info("Cleaning hosts/service of %s", c_id)
         to_del_h = [h for h in self.hosts if h.instance_id == c_id]
         to_del_srv = [s for s in self.services if s.instance_id == c_id]
 
@@ -913,6 +939,30 @@ class Regenerator(object):
                     logger.error("Exception when cleaning servicegroup: %s", str(exp))
 
                 logger.debug("- members count after cleaning: %d members", len(sg.members))
+
+    def manage_initial_host_template_status_brok(self, b):
+        """Got a new host template"""
+        data = b.data
+        hname = data['host_name']
+        inst_id = data['instance_id']
+
+        # Try to get the in progress Hosts
+        try:
+            inp_hosts = self.inp_hosts[inst_id]
+        except Exception as exp:
+            logger.error("[Regenerator] initial_host_template_status:: Not good!  %s", str(exp))
+            return
+        logger.debug("Creating a host: %s - %s from scheduler %s", data['id'], hname, inst_id)
+        logger.debug("Creating a host: %s ", data)
+
+        host = Host({})
+        self.update_element(host, data)
+
+        # Update downtimes/comments
+        self._update_events(host)
+
+        # Ok, put in in the in progress hosts
+        inp_hosts[host.id] = host
 
     def manage_initial_host_status_brok(self, b):
         """Got a new host"""
