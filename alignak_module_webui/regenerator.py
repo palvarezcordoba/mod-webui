@@ -258,7 +258,8 @@ class Regenerator(object):
 
         # In a scheduler we are already "linked" so we can skip this
         if self.in_scheduler_mode:
-            logger.debug("Regenerator: We skip the all_done_linking phase because we are in a scheduler")
+            logger.debug("Regenerator: We skip the all_done_linking phase "
+                         "because we are in a scheduler")
             return
 
         start = time.time()
@@ -952,17 +953,15 @@ class Regenerator(object):
         except Exception as exp:
             logger.error("[Regenerator] initial_host_template_status:: Not good!  %s", str(exp))
             return
-        logger.debug("Creating a host: %s - %s from scheduler %s", data['id'], hname, inst_id)
-        logger.debug("Creating a host: %s ", data)
+        logger.debug("Creating a host template: %s - %s from scheduler %s",
+                     data['id'], hname, inst_id)
+        logger.debug("Creating a host template: %s ", data)
 
         host = Host({})
         self.update_element(host, data)
 
-        # Update downtimes/comments
-        self._update_events(host)
-
         # Ok, put in in the in progress hosts
-        inp_hosts[host.id] = host
+        inp_hosts.add_template(host)
 
     def manage_initial_host_status_brok(self, b):
         """Got a new host"""
