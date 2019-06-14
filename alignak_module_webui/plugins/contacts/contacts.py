@@ -42,6 +42,10 @@ def show_contact(name):
     contact = app.datamgr.get_contact(name=name, user=user) or app.redirect404()
     logger.debug("Show contact: %s", contact)
 
+    c = app.datamgr.get_contact(name="generic-contact", user=user, template=True) or \
+        app.redirect404()
+    logger.info("Contact template: %s", c)
+
     return {'contact': User.from_contact(contact)}
 
 

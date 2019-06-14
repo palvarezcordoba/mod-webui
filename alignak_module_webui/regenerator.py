@@ -603,6 +603,30 @@ class Regenerator(object):
             # We can really declare this service template
             self.services.add_template(service)
 
+        # Manage services templates
+        self.services.templates = {}
+        for service in list(inp_services.templates.values()):
+            logger.debug("Service template: %s", service)
+
+            # Now link Command() objects
+            self.linkify_a_command(service, 'check_command')
+            self.linkify_a_command(service, 'event_handler')
+            self.linkify_a_command(service, 'snapshot_command')
+
+            # Now link timeperiods
+            self.linkify_a_timeperiod_by_name(service, 'notification_period')
+            self.linkify_a_timeperiod_by_name(service, 'check_period')
+            self.linkify_a_timeperiod_by_name(service, 'maintenance_period')
+            self.linkify_a_timeperiod_by_name(service, 'snapshot_period')
+
+            # And link contacts too
+            self.linkify_contacts(service, 'contacts')
+            logger.debug("Service template %s has contacts: %s",
+                         service.get_name(), service.contacts)
+
+            # We can really declare this service template
+            self.services.add_template(service)
+
         # Add realm of the hosts
         for host in inp_hosts:
             # WebUI - Manage realms if declared (Alignak)
