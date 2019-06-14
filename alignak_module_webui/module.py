@@ -40,19 +40,10 @@ import signal
 import time
 import threading
 import imp
+import logging
 import requests
 
 from collections import deque
-
-# Specific logger configuration
-import logging
-from alignak.log import ALIGNAK_LOGGER_NAME
-logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
-# logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-# # for handler in logger.parent.handlers:
-# #     if isinstance(handler, logging.StreamHandler):
-# #         logger.parent.removeHandler(handler)
-
 
 from alignak.basemodule import BaseModule
 
@@ -78,6 +69,14 @@ from .submodules.auth import AuthMetaModule
 from .submodules.logs import LogsMetaModule
 from .submodules.graphs import GraphsMetaModule
 from .submodules.helpdesk import HelpdeskMetaModule
+
+# Specific logger configuration
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+# logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+# # for handler in logger.parent.handlers:
+# #     if isinstance(handler, logging.StreamHandler):
+# #         logger.parent.removeHandler(handler)
 
 
 WEBUI_VERSION = "3.0.0"
@@ -199,7 +198,8 @@ class WebuiBroker(BaseModule, Daemon):
         # TODO : common preferences
         self.company_logo = getattr(modconf, 'company_logo', 'undefined')
         if not self.company_logo:
-            # Set a dummy value if value defined in the configuration is empty to force using the default logo ...
+            # Set a dummy value if value defined in the configuration
+            # is empty to force using the default logo ...
             self.company_logo = 'undefined'
         # TODO : common preferences
         self.gravatar = to_bool(getattr(modconf, 'gravatar', '0'))
@@ -232,7 +232,8 @@ class WebuiBroker(BaseModule, Daemon):
         # MongoDB connection
         self.uri = getattr(modconf, "uri", "mongodb://localhost")
         if not self.uri:
-            logger.warning("You defined an empty MongoDB connection URI. Features like user's preferences, or system"
+            logger.warning("You defined an empty MongoDB connection URI. "
+                           "Features like user's preferences, or system "
                            "log and hosts availability will not be available.")
 
         # Advanced options
@@ -292,11 +293,14 @@ class WebuiBroker(BaseModule, Daemon):
 
         # Visual alerting thresholds
         # --------------------------
-        # All the hosts and services that are in a HARD non OK/UP state are considered as problems if their
+        # All the hosts and services that are in a HARD non OK/UP state
+        # are considered as problems if their
         # business_impact is greater than or equal this value
         self.problems_business_impact = int(getattr(modconf, 'problems_business_impact', '1'))
-        # important_problems_business_impact is used to filter the alerting badges in the header bar (default is 3)
-        self.important_problems_business_impact = int(getattr(modconf, 'important_problems_business_impact', '3'))
+        # important_problems_business_impact is used to filter
+        # the alerting badges in the header bar (default is 3)
+        self.important_problems_business_impact = \
+            int(getattr(modconf, 'important_problems_business_impact', '3'))
         logger.info("minimum business impacts, all UI: %s, most important: %s",
                     self.problems_business_impact, self.important_problems_business_impact)
 
@@ -305,7 +309,8 @@ class WebuiBroker(BaseModule, Daemon):
             % self.problems_business_impact
 
         # Inner computation rules for the problems
-        self.disable_inner_problems_computation = int(getattr(modconf, 'disable_inner_problems_computation', '0'))
+        self.disable_inner_problems_computation = \
+            int(getattr(modconf, 'disable_inner_problems_computation', '0'))
 
         # Used in the dashboard view to select background color for percentages
         self.hosts_states_warning = int(getattr(modconf, 'hosts_states_warning', '95'))
@@ -522,7 +527,8 @@ class WebuiBroker(BaseModule, Daemon):
                 logger.debug("- %s", route.__dict__)
                 if route.name:
                     if route.config:
-                        logger.debug("- %s for %s, configuration: %s", route.name, route.rule, route.config)
+                        logger.debug("- %s for %s, configuration: %s",
+                                     route.name, route.rule, route.config)
                     else:
                         logger.debug("- %s for %s", route.name, route.rule)
 
@@ -549,7 +555,8 @@ class WebuiBroker(BaseModule, Daemon):
 
             logger.info("starting Web UI server on %s:%d ...", self.host, self.port)
             bottle.TEMPLATES.clear()
-            webui_app.run(host=self.host, port=self.port, server=self.http_backend, **self.serveropts)
+            webui_app.run(host=self.host, port=self.port,
+                          server=self.http_backend, **self.serveropts)
         except Exception as e:
             logger.error("do_main exception: %s", str(e))
             logger.error("traceback: %s", traceback.format_exc())
@@ -557,7 +564,8 @@ class WebuiBroker(BaseModule, Daemon):
 
     def push_external_command(self, e):  # pylint: disable=global-statement
         """
-            A plugin sends us an external command. Notify this command to the monitoring framework ...
+            A plugin sends us an external command. Notify this command
+            to the monitoring framework ...
         """
         logger.debug("Got an external command: %s", e.__dict__)
         logger.info("Sending a command to Alignak")
@@ -690,7 +698,8 @@ class WebuiBroker(BaseModule, Daemon):
                             mod.manage_brok(b)
                         except Exception as exp:
                             logger.warning("The mod %s raise an exception: %s, "
-                                           "I'm tagging it to restart later", mod.get_name(), str(exp))
+                                           "I'm tagging it to restart later",
+                                           mod.get_name(), str(exp))
                             logger.debug("Back trace of this kill: %s", traceback.format_exc())
                             self.modules_manager.set_to_restart(mod)
                 except Exception as exp:
@@ -725,20 +734,22 @@ class WebuiBroker(BaseModule, Daemon):
         while not self.interrupted:
             # Get Alignak status
             try:
-                raw_data = req.get("%s/status" % self.alignak_endpoint)
-                data = json.loads(raw_data.content)
+                raw_data = req.get("%s/status"
+                                   % self.alignak_endpoint)
+                data = raw_data.json()
                 self.alignak_livestate = data.get('livestate', 'Unknown')
                 logger.debug("[fmwk_thread] Livestate: %s", data)
             except Exception as exp:
-                logger.info("[fmwk_thread] alignak_status, exception: %s", exp)
+                logger.info("[fmwk_thread] get status, exception: %s", exp)
 
             try:
                 # Get Alignak most recent events
                 # count is the maximum number of events we will be able to get
                 # timestamp is the most recent event we got
                 raw_data = req.get("%s/events_log?details=1&count=%d&timestamp=%d"
-                                   % (self.alignak_endpoint, self.alignak_events_count, alignak_timestamp))
-                data = json.loads(raw_data.content)
+                                   % (self.alignak_endpoint, self.alignak_events_count,
+                                      alignak_timestamp))
+                data = raw_data.json()
                 logger.debug("[fmwk_thread] got %d event log", len(data))
                 for log in data:
                     # Data contains: {
@@ -751,7 +762,7 @@ class WebuiBroker(BaseModule, Daemon):
                         self.alignak_events.appendleft(log)
                 logger.debug("[fmwk_thread] %d log events", len(self.alignak_events))
             except Exception as exp:
-                logger.info("[fmwk_thread] alignak_status, exception: %s", exp)
+                logger.info("[fmwk_thread] get events, exception: %s", exp)
 
             # Sleep for a while...
             time.sleep(self.alignak_check_period)
@@ -985,7 +996,8 @@ class WebuiBroker(BaseModule, Daemon):
             # Check existing contact ...
             c = self.datamgr.get_contact(name=username)
             if not c:
-                logger.error("You need to have a contact having the same name as your user: %s", username)
+                logger.error("You need to have a contact having the same name as your user: %s",
+                             username)
                 return False
 
             user = User.from_contact(c)
@@ -1017,7 +1029,8 @@ class WebuiBroker(BaseModule, Daemon):
             user = request.environ.get('USER', None)
 
         try:
-            retval = user and ((not self.manage_acl) or user.is_administrator() or user.is_commands_allowed())
+            retval = user and ((not self.manage_acl)
+                               or user.is_administrator() or user.is_commands_allowed())
         except Exception:  # pylint: disable=broad-except
             retval = False
         return retval
@@ -1054,7 +1067,8 @@ class WebuiBroker(BaseModule, Daemon):
 
         return ''
 
-    def update_search_string_with_default_search(self, requested_search, default_search='', redirect=True):
+    def update_search_string_with_default_search(self, requested_search, default_search='',
+                                                 redirect=True):
         search = default_search if requested_search is None else requested_search
 
         if search != requested_search:
@@ -1063,7 +1077,8 @@ class WebuiBroker(BaseModule, Daemon):
 
         return search
 
-    def update_search_string_with_default_filters(self, requested_search, filters=[], prepend=True, redirect=True):
+    def update_search_string_with_default_filters(self, requested_search, filters=[], prepend=True,
+                                                  redirect=True):
         search = requested_search or ''
 
         if prepend:
@@ -1094,14 +1109,19 @@ class WebuiBroker(BaseModule, Daemon):
         return search
 
     def get_and_update_search_string_with_problems_filters(self, redirect=True):
-        problems_filters = ['isnot:UP', 'isnot:OK', 'isnot:PENDING', 'isnot:ACK', 'isnot:DOWNTIME', 'isnot:SOFT']
+        problems_filters = [
+            'isnot:UP', 'isnot:OK', 'isnot:PENDING', 'isnot:ACK', 'isnot:DOWNTIME', 'isnot:SOFT'
+        ]
 
         requested_search = self.get_search_string()
 
         search = self.update_search_string_with_default_search(requested_search,
-                                                               self.PROBLEMS_SEARCH_STRING, redirect=False)
-        search = self.update_search_string_with_default_filters(search, problems_filters, redirect=False)
-        search = self.update_search_string_with_default_bi_filter(search, redirect=False)
+                                                               self.PROBLEMS_SEARCH_STRING,
+                                                               redirect=False)
+        search = self.update_search_string_with_default_filters(search, problems_filters,
+                                                                redirect=False)
+        search = self.update_search_string_with_default_bi_filter(search,
+                                                                  redirect=False)
 
         if search != requested_search:
             if redirect:

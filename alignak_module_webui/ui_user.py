@@ -25,12 +25,11 @@
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from alignak.objects import Contact
 from alignak.log import logger
 
 from alignak.objects.contact import Contact
-from alignak.objects.host import Host
 from alignak.objects.service import Service
+
 
 class User(Contact):
     session = None
@@ -97,7 +96,7 @@ class User(Contact):
 
         return getattr(self, 'can_submit_commands', '0') == '1'
 
-    def _is_related_to(self, item):
+    def is_related_to(self, item):
         """ Is the item (host, service, group,...) related to the user?
 
             In other words, can the user see this item in the WebUI?

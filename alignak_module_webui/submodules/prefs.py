@@ -103,7 +103,7 @@ class MongoDBPreferences(object):
 
         self.is_connected = False
         self.con = None
-        self.db = None
+        self.database = None
 
         if self.uri:
             logger.info("[MongoDBPreferences] Trying to open a Mongodb connection to %s, "
@@ -133,18 +133,18 @@ class MongoDBPreferences(object):
                 self.con = MongoClient(self.uri, fsync=self.mongodb_fsync)
             logger.info("[MongoDBPreferences] connected to mongodb: %s", self.uri)
 
-            self.db = getattr(self.con, self.database)
+            self.database = getattr(self.con, self.database)
             logger.info("[MongoDBPreferences] connected to the database: %s", self.database)
 
             if self.username and self.password:
-                self.db.authenticate(self.username, self.password)
+                self.database.authenticate(self.username, self.password)
                 logger.info("[MongoDBPreferences] user authenticated: %s", self.username)
 
             # Update a document test item in the collection to confirm correct connection
             logger.info("[MongoDBPreferences] updating connection test item in the collection ...")
-            self.db.ui_user_preferences.update_one({"_id": "test-ui_prefs"},
-                                                   {"$set": {"last_test": time.time()}},
-                                                   upsert=True)
+            self.database.ui_user_preferences.update_one({"_id": "test-ui_prefs"},
+                                                         {"$set": {"last_test": time.time()}},
+                                                         upsert=True)
             logger.info("[MongoDBPreferences] updated connection test item")
 
             self.is_connected = True
@@ -169,11 +169,12 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return None
 
         try:
-            doc = self.db.ui_user_preferences.find_one({"_id": "shinken-global"})
+            doc = self.database.ui_user_preferences.find_one({"_id": "shinken-global"})
         except Exception as exp:
             logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False
@@ -193,7 +194,8 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return None
 
         if not user:
@@ -201,7 +203,7 @@ class MongoDBPreferences(object):
             return None
 
         try:
-            doc = self.db.ui_user_preferences.find_one({"_id": user.contact_name})
+            doc = self.database.ui_user_preferences.find_one({"_id": user.contact_name})
         except Exception as exp:
             logger.warning("[MongoDBPreferences] Exception: %s", str(exp))
             self.is_connected = False
@@ -225,7 +227,8 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return
 
         if not user:
@@ -234,9 +237,9 @@ class MongoDBPreferences(object):
 
         try:
             # Update/insert user preference
-            r = self.db.ui_user_preferences.update_one({"_id": user.contact_name},
-                                                       {"$set": {key: value}}, upsert=True)
-            if not r:
+            res = self.database.ui_user_preferences.update_one({"_id": user.contact_name},
+                                                               {"$set": {key: value}}, upsert=True)
+            if not res:
                 # This should never happen but log for alerting!
                 logger.warning("[MongoDBPreferences] failed updating user preference: %s", key)
         except Exception as exp:
@@ -250,15 +253,16 @@ class MongoDBPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return
 
         try:
             # Update/insert the common preference
-            r = self.db.ui_user_preferences.update_one({"_id": "shinken-global"},
-                                                       {"$set": {key: value}},
-                                                       upsert=True)
-            if not r:
+            res = self.database.ui_user_preferences.update_one({"_id": "shinken-global"},
+                                                               {"$set": {key: value}},
+                                                               upsert=True)
+            if not res:
                 # This should never happen but log for alerting!
                 logger.warning("[MongoDBPreferences] failed updating common preference: %s", key)
         except Exception as exp:
@@ -296,11 +300,12 @@ class JsonPreferences(object):
         self.db = None
 
         if self.uri:
-            logger.info("[MongoDBPreferences] Trying to open a Mongodb connection to %s, database: %s",
-                        self.uri, self.database)
+            logger.info("[MongoDBPreferences] Trying to open a Mongodb connection "
+                        "to %s, database: %s", self.uri, self.database)
             self.open()
         else:
-            logger.warning("You do not have any MongoDB connection for user's preferences storage module. "
+            logger.warning("You do not have any MongoDB connection for user's preferences "
+                           "storage module. "
                            "The Web UI dashboard and user's preferences will not be saved.")
 
     def open(self):
@@ -358,7 +363,8 @@ class JsonPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return None
 
         try:
@@ -382,7 +388,8 @@ class JsonPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return None
 
         if not user:
@@ -414,7 +421,8 @@ class JsonPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return
 
         if not user:
@@ -423,9 +431,9 @@ class JsonPreferences(object):
 
         try:
             # Update/insert user preference
-            r = self.db.ui_user_preferences.update_one({"_id": user.contact_name},
-                                                       {"$set": {key: value}}, upsert=True)
-            if not r:
+            res = self.db.ui_user_preferences.update_one({"_id": user.contact_name},
+                                                         {"$set": {key: value}}, upsert=True)
+            if not res:
                 # This should never happen but log for alerting!
                 logger.warning("[MongoDBPreferences] failed updating user preference: %s", key)
         except Exception as exp:
@@ -439,15 +447,16 @@ class JsonPreferences(object):
 
         if not self.is_connected:
             if not self.open():
-                logger.error("[MongoDBPreferences] error during initialization, no database connection!")
+                logger.error("[MongoDBPreferences] error during initialization, "
+                             "no database connection!")
                 return
 
         try:
             # Update/insert the common preference
-            r = self.db.ui_user_preferences.update_one({"_id": "shinken-global"},
-                                                       {"$set": {key: value}},
-                                                       upsert=True)
-            if not r:
+            res = self.db.ui_user_preferences.update_one({"_id": "shinken-global"},
+                                                         {"$set": {key: value}},
+                                                         upsert=True)
+            if not res:
                 # This should never happen but log for alerting!
                 logger.warning("[MongoDBPreferences] failed updating common preference: %s", key)
         except Exception as exp:

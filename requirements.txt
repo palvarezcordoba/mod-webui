@@ -2,7 +2,7 @@
 bottle
 pymongo>=3.0.3
 requests
-pycurl
+#pycurl
 arrow
 passlib
 alignak

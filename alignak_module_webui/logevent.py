@@ -85,7 +85,8 @@ EVENT_TYPES = {
         'properties': [
             'event_type',  # 'EXTERNAL COMMAND'
             'timestamp',  # '[1490997512]'
-            'command',  # 'PROCESS_SERVICE_CHECK_RESULT;ek3022sg-0001;svc_Screensaver;0;Ok|'ScreensaverOff'=61c
+            'command',  # 'PROCESS_SERVICE_CHECK_RESULT;ek3022sg-0001;
+            # svc_Screensaver;0;Ok|'ScreensaverOff'=61c
         ]
     },
     'CURRENT': {
@@ -245,7 +246,6 @@ EVENT_TYPES = {
     }
 }
 
-# SERVICE ACKNOWLEDGE ALERT: south_host_004;dummy_critical;STARTED; Service problem has been acknowledged
 
 class LogEvent(object):  # pylint: disable=too-few-public-methods
     """Class for parsing event logs

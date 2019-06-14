@@ -26,6 +26,12 @@
 # import user
 from ui_user import User
 
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+
+
 # Will be populated by the UI with it's own value
 app = None
 
@@ -34,6 +40,10 @@ app = None
 def show_contact(name):
     user = app.request.environ['USER']
     contact = app.datamgr.get_contact(name=name, user=user) or app.redirect404()
+
+    c = app.datamgr.get_contact(name="generic-contact", user=user, template=True) or \
+        app.redirect404()
+    logger.info("Contact template: %s", c)
 
     return {'contact': User.from_contact(contact)}
 

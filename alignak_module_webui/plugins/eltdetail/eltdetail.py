@@ -26,6 +26,12 @@
 import time
 
 
+# Specific logger configuration
+import logging
+from alignak.log import ALIGNAK_LOGGER_NAME
+logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+
+
 # Will be populated by the UI with it's own value
 app = None
 
@@ -34,6 +40,10 @@ app = None
 def show_host(host_name):
     # Ok, we can lookup it
     user = app.bottle.request.environ['USER']
+
+    h = app.datamgr.get_host('generic-host', user, template=True) or app.redirect404()
+    logger.info("Host template: %s", h)
+
     h = app.datamgr.get_host(host_name, user) or app.redirect404()
 
     # Set hostgroups level ...
@@ -54,6 +64,10 @@ def show_host(host_name):
 # Service element view
 def show_service(host_name, service):
     user = app.bottle.request.environ['USER']
+
+    s = app.datamgr.get_service(host_name, service, user, tem) or app.redirect404()
+    logger.info("Host template: %s", h)
+
     s = app.datamgr.get_service(host_name, service, user) or app.redirect404()
 
     # Set servicegroups level ...
