@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# pylint: disable=attribute-defined-outside-init
+
 # Copyright (C) 2009-2014:
 #   Gabes Jean, naparuba@gmail.com
 #   Gerhard Lausser, Gerhard.Lausser@consol.de
@@ -26,12 +28,11 @@
 
 
 """
-This Class is a plugin for the Shinken Broker. It is in charge
-to get broks and recreate real objects, and propose a Web User Interface :)
+This Class is a plugin for the Shinken/Alignak Broker. It is in charge to get broks
+and recreate real objects to propose a Web User Interface :)
 """
 
 import os
-import json
 import string
 import random
 import traceback
@@ -41,27 +42,29 @@ import time
 import threading
 import imp
 import logging
-import requests
 
 from collections import deque
 
-from alignak.basemodule import BaseModule
-
-# Regenerate objects from the received broks
-from .regenerator import Regenerator
-
-from alignak.modulesmanager import ModulesManager
-from alignak.daemon import Daemon
-from alignak.util import to_bool
+import requests
 
 # Bottle import
 from bottle import request, response
 import bottle
 
+from alignak.basemodule import BaseModule
+from alignak.modulesmanager import ModulesManager
+from alignak.daemon import Daemon
+from alignak.util import to_bool
+
 # Local import
+# Regenerate objects from the received broks
+from .regenerator import Regenerator
+# Data manager
 from .datamanager import WebUIDataManager
-from .ui_user import User
+# Helper functions
 from .helper import helper
+# UI user features
+from .ui_user import User
 
 # Sub modules
 from .submodules.prefs import PrefsMetaModule
@@ -73,10 +76,6 @@ from .submodules.helpdesk import HelpdeskMetaModule
 # Specific logger configuration
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
-# logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-# # for handler in logger.parent.handlers:
-# #     if isinstance(handler, logging.StreamHandler):
-# #         logger.parent.removeHandler(handler)
 
 
 WEBUI_VERSION = "3.0.0"
@@ -92,9 +91,6 @@ ALIGNAK_UI_DEBUG = False
 if os.environ.get('ALIGNAK_UI_DEBUG', None) or os.environ.get('SHINKEN_UI_DEBUG', None):
     ALIGNAK_UI_DEBUG = True
     bottle.debug(True)
-# bottle.debug(True)
-# # Do not log the urllib3 requests on the console
-# logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 # Look at the webui module root dir too
 webuimod_dir = os.path.abspath(os.path.dirname(__file__))
@@ -111,49 +107,100 @@ properties = {
 }
 
 
-# called by the plugin manager to get an instance
 def get_instance(plugin):
+    """Called by the plugin manager to get an instance"""
     instance = WebuiBroker(plugin)
     logger.info("got an instance of Webui_broker for module: %s", plugin.get_name())
     return instance
 
 
-# Read auth_secret from conf or file, if one exists, or autogenerate one
-def resolve_auth_secret(modconf):
-    candidate = getattr(modconf, 'auth_secret', None)
+def resolve_auth_secret(configuration):
+    """Read auth_secret from the configuration or a file (if it exists), else self generate one"""
+    candidate = getattr(configuration, 'auth_secret', None)
     if not candidate:
         # Look for file
-        auth_secret_file = getattr(modconf, 'auth_secret_file', '/var/lib/shinken/auth_secret')
+        auth_secret_file = getattr(configuration,
+                                   'auth_secret_file', '/var/lib/shinken/auth_secret')
         if os.path.exists(auth_secret_file):
             with open(auth_secret_file) as secret:
                 candidate = secret.read()
         else:
-            # Autogenerate a secret
+            # Self generate a secret
             chars = string.ascii_letters + string.digits
             candidate = ''.join([random.choice(chars) for _ in range(32)])
             try:
-                with os.fdopen(os.open(auth_secret_file, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as secret:
+                with os.fdopen(os.open(auth_secret_file,
+                                       os.O_WRONLY | os.O_CREAT, 0o600), 'w') as secret:
                     secret.write(candidate)
-            except Exception as e:
-                logger.error(
-                    "Authentication secret file creation failed: %s, error: %s",
-                    auth_secret_file, str(e)
-                )
+            except Exception as exp:
+                logger.error("Authentication secret file creation failed: %s, error: %s",
+                             auth_secret_file, str(exp))
     return candidate
 
 
 # Class for the WebUI Broker
 class WebuiBroker(BaseModule, Daemon):
-    def __init__(self, modconf):
-        """modconf is a Module object!"""
-        BaseModule.__init__(self, modconf)
+    def __init__(self, mod_conf):
+        """UI initialisation
+
+        mod_conf is a Module object that contains:
+        - all the variables used to configure the Broker daemon
+        - all the variables declared in the module configuration
+        - a 'properties' value that is the module properties as defined globally in this file
+
+        :param mod_conf: alignak.objects.module.Module
+        """
+        BaseModule.__init__(self, mod_conf)
+
+        # pylint: disable=global-statement
+        global logger
+
+        logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+        logger.setLevel(getattr(mod_conf, 'log_level', logging.INFO))
+
+        # Allow to use log_file or log_filename for the specific UI logger
+        if getattr(mod_conf, 'log_filename', None) is None and getattr(mod_conf, 'log_file', None):
+            mod_conf.log_filename = getattr(mod_conf, 'log_file')
+
+        if getattr(mod_conf, 'log_filename', None):
+            # If the file name is a relative path, uses the default daemon log directory
+            log_filename = getattr(mod_conf, 'log_filename')
+            if not os.path.isabs(log_filename):
+                log_filename = os.path.abspath(
+                    os.path.join(getattr(mod_conf, 'logdir', os.getcwd()), log_filename))
+
+            # Configure a timed rotation file logger
+            for hdlr in logger.handlers:
+                if isinstance(hdlr, logging.handlers.TimedRotatingFileHandler):
+                    # We still have a file logger - but this should never happen!
+                    break
+            else:
+                file_handler = logging.handlers.TimedRotatingFileHandler(
+                    log_filename,
+                    when=getattr(mod_conf, 'log_rotation_when', 'midnight'),
+                    interval=getattr(mod_conf, 'log_rotation_interval', 1),
+                    backupCount=getattr(mod_conf, 'log_rotation_count', 7))
+                file_handler.setFormatter(
+                    logging.Formatter(getattr(mod_conf, 'log_format',
+                                              '[%(asctime)s] %(levelname)s: [%(name)s] %(message)s'),
+                                      getattr(mod_conf, 'log_date',
+                                              '%Y-%m-%d %H:%M:%S')))
+                file_handler.setLevel(getattr(mod_conf, 'log_level', logging.INFO))
+                logger.addHandler(file_handler)
+                logger.info("Configured Web UI log to: %s", log_filename)
+
+        logger.debug("inner properties: %s", self.__dict__)
+        logger.debug("received configuration: %s", mod_conf.__dict__)
 
         if getattr(self, 'use_ssl', None) is None:
             self.use_ssl = False
 
+        self.my_configuration = mod_conf
+        logger.info("received configuration: %s", self.my_configuration)
+        for prop in self.my_configuration.__dict__:
+            logger.info("- %s: %s", prop, getattr(mod_conf, prop, 'XxX'))
+
         self.plugins = []
-        self.modconf = modconf
-        logger.debug("module configuration: %s", self.modconf)
 
         if ALIGNAK_UI_DEBUG:
             logger.warning("Using Bottle Web framework in debug mode.")
@@ -161,112 +208,123 @@ class WebuiBroker(BaseModule, Daemon):
         # A daemon must have these properties
         self.type = 'webui'
         self.name = 'webui'
-        self.module_type = getattr(modconf, 'module_type', 'unset')
-        self.module_name = getattr(modconf, 'module_name', 'unset')
+        self.module_type = getattr(mod_conf, 'module_type', 'unset')
+        self.module_name = getattr(mod_conf, 'module_name', 'unset')
 
         # Configure Alignak Arbiter API endpoint
-        self.alignak_endpoint = getattr(modconf, 'alignak_endpoint', 'http://127.0.0.1:7770')
-        self.alignak_check_period = int(getattr(modconf, 'alignak_check_period', '10'))
+        self.alignak_endpoint = getattr(mod_conf, 'alignak_endpoint', 'http://127.0.0.1:7770')
+        self.alignak_check_period = int(getattr(mod_conf, 'alignak_check_period', '10'))
         self.alignak_livestate = {}
-        self.alignak_events_count = int(getattr(modconf, 'alignak_events_count', '1000'))
+        self.alignak_events_count = int(getattr(mod_conf, 'alignak_events_count', '1000'))
         self.alignak_events = deque(maxlen=int(os.environ.get('ALIGNAK_EVENTS_LOG_COUNT',
                                                               self.alignak_events_count)))
+
+        # Threads
+        self.my_data_thread = None
+        self.my_fmwk_thread = None
+
+        # We will protect the operations on
+        # the non read+write with a lock and 2 counters
+        self.global_lock = threading.RLock()
+        self.nb_readers = 0
+        self.nb_writers = 0
+
         # Web UI modules
-        self.modules = getattr(modconf, 'modules', [])
+        self.modules = getattr(mod_conf, 'modules', [])
         if self.modules and not isinstance(self.modules, list):
             self.modules = [self.modules]
         if self.modules and not self.modules[0]:
             self.modules = []
         # todo: set default directory for the modules directory
-        self.modules_dir = getattr(modconf, 'modules_dir', './modules')
+        self.modules_dir = getattr(mod_conf, 'modules_dir', './modules')
         logger.info("modules: %s in %s", self.modules, self.modules_dir)
 
         # Web server configuration
-        self.host = getattr(modconf, 'host', '0.0.0.0')
-        self.port = int(getattr(modconf, 'port', '7767'))
+        self.host = getattr(mod_conf, 'host', '0.0.0.0')
+        self.port = int(getattr(mod_conf, 'port', '7767'))
         logger.info("server: %s:%d", self.host, self.port)
 
         # Build session cookie
-        self.session_cookie = getattr(modconf, 'cookie_name', 'user_session')
-        self.auth_secret = resolve_auth_secret(modconf)
+        self.session_cookie = getattr(mod_conf, 'cookie_name', 'user_session')
+        self.auth_secret = resolve_auth_secret(mod_conf)
         logger.info("user session cookie name: %s", self.session_cookie)
         # TODO : common preferences
-        self.play_sound = to_bool(getattr(modconf, 'play_sound', '0'))
+        self.play_sound = to_bool(getattr(mod_conf, 'play_sound', '0'))
         logger.info("sound: %s", self.play_sound)
         # TODO : common preferences
-        self.login_text = getattr(modconf, 'login_text', None)
+        self.login_text = getattr(mod_conf, 'login_text', None)
         # TODO : common preferences
-        self.company_logo = getattr(modconf, 'company_logo', 'undefined')
+        self.company_logo = getattr(mod_conf, 'company_logo', 'undefined')
         if not self.company_logo:
             # Set a dummy value if value defined in the configuration
             # is empty to force using the default logo ...
             self.company_logo = 'undefined'
         # TODO : common preferences
-        self.gravatar = to_bool(getattr(modconf, 'gravatar', '0'))
+        self.gravatar = to_bool(getattr(mod_conf, 'gravatar', '0'))
         # TODO : common preferences
-        self.allow_html_output = to_bool(getattr(modconf, 'allow_html_output', '0'))
+        self.allow_html_output = to_bool(getattr(mod_conf, 'allow_html_output', '0'))
         # TODO : common preferences
         # self.max_output_length = int(getattr(modconf, 'max_output_length', '100'))
         # TODO : common preferences
-        self.refresh_period = int(getattr(modconf, 'refresh_period', '60'))
+        self.refresh_period = int(getattr(mod_conf, 'refresh_period', '60'))
         logger.info("refresh period: %s", self.refresh_period)
-        self.refresh = False if self.refresh_period == 0 else True
+        self.refresh = (self.refresh_period == 0)
         # Use element tag as image or use text
-        self.tag_as_image = to_bool(getattr(modconf, 'tag_as_image', '0'))
+        self.tag_as_image = to_bool(getattr(mod_conf, 'tag_as_image', '0'))
 
         # Manage user's ACL
-        self.manage_acl = to_bool(getattr(modconf, 'manage_acl', '1'))
-        self.allow_anonymous = to_bool(getattr(modconf, 'allow_anonymous', '0'))
+        self.manage_acl = to_bool(getattr(mod_conf, 'manage_acl', '1'))
+        self.allow_anonymous = to_bool(getattr(mod_conf, 'allow_anonymous', '0'))
 
         # Allow to customize default downtime duration
-        self.default_downtime_hours = int(getattr(modconf, 'default_downtime_hours', '48'))
-        self.shinken_downtime_fixed = int(getattr(modconf, 'shinken_downtime_fixed', '1'))
-        self.shinken_downtime_trigger = int(getattr(modconf, 'shinken_downtime_trigger', '0'))
-        self.shinken_downtime_duration = int(getattr(modconf, 'shinken_downtime_duration', '0'))
+        self.default_downtime_hours = int(getattr(mod_conf, 'default_downtime_hours', '48'))
+        self.shinken_downtime_fixed = int(getattr(mod_conf, 'shinken_downtime_fixed', '1'))
+        self.shinken_downtime_trigger = int(getattr(mod_conf, 'shinken_downtime_trigger', '0'))
+        self.shinken_downtime_duration = int(getattr(mod_conf, 'shinken_downtime_duration', '0'))
 
         # Allow to customize default acknowledge parameters
-        self.default_ack_sticky = int(getattr(modconf, 'default_ack_sticky', '2'))
-        self.default_ack_notify = int(getattr(modconf, 'default_ack_notify', '1'))
-        self.default_ack_persistent = int(getattr(modconf, 'default_ack_persistent', '1'))
+        self.default_ack_sticky = int(getattr(mod_conf, 'default_ack_sticky', '2'))
+        self.default_ack_notify = int(getattr(mod_conf, 'default_ack_notify', '1'))
+        self.default_ack_persistent = int(getattr(mod_conf, 'default_ack_persistent', '1'))
 
         # MongoDB connection
-        self.uri = getattr(modconf, "uri", "mongodb://localhost")
+        self.uri = getattr(mod_conf, "uri", "mongodb://localhost")
         if not self.uri:
             logger.warning("You defined an empty MongoDB connection URI. "
                            "Features like user's preferences, or system "
                            "log and hosts availability will not be available.")
 
         # Advanced options
-        self.http_backend = getattr(modconf, 'http_backend', 'auto')
-        self.remote_user_enable = getattr(modconf, 'remote_user_enable', '0')
-        self.remote_user_variable = getattr(modconf, 'remote_user_variable', 'X_REMOTE_USER')
+        self.http_backend = getattr(mod_conf, 'http_backend', 'auto')
+        self.remote_user_enable = getattr(mod_conf, 'remote_user_enable', '0')
+        self.remote_user_variable = getattr(mod_conf, 'remote_user_variable', 'X_REMOTE_USER')
         self.serveropts = {}
-        umask = getattr(modconf, 'umask', None)
+        umask = getattr(mod_conf, 'umask', None)
         if umask is not None:
             self.serveropts['umask'] = int(umask)
-        bind_address = getattr(modconf, 'bind_address', None)
+        bind_address = getattr(mod_conf, 'bind_address', None)
         if bind_address:
             self.serveropts['bind_address'] = str(bind_address)
 
         # Apache htpasswd file for authentication
-        self.htpasswd_file = getattr(modconf, 'htpasswd_file', None)
+        self.htpasswd_file = getattr(mod_conf, 'htpasswd_file', None)
         if self.htpasswd_file:
             if not os.path.exists(self.htpasswd_file):
                 logger.warning("htpasswd file '%s' does not exist.", self.htpasswd_file)
                 self.htpasswd_file = None
 
         # Load the config dir and make it an absolute path
-        self.config_dir = getattr(modconf, 'config_dir', 'share')
+        self.config_dir = getattr(mod_conf, 'config_dir', 'share')
         self.config_dir = os.path.abspath(self.config_dir)
         logger.info("Config dir: %s", self.config_dir)
 
         # Load the share dir and make it an absolute path
-        self.share_dir = getattr(modconf, 'share_dir', 'share')
+        self.share_dir = getattr(mod_conf, 'share_dir', 'share')
         self.share_dir = os.path.abspath(self.share_dir)
         logger.info("Share dir: %s", self.share_dir)
 
         # Load the photo dir and make it an absolute path
-        self.photo_dir = getattr(modconf, 'photos_dir', 'photos')
+        self.photo_dir = getattr(mod_conf, 'photos_dir', 'photos')
         self.photo_dir = os.path.abspath(self.photo_dir)
         logger.info("Photo dir: %s", self.photo_dir)
 
@@ -278,13 +336,13 @@ class WebuiBroker(BaseModule, Daemon):
         # self.embeded_graph = to_bool(getattr(modconf, 'embeded_graph', '0'))
 
         # Look for an additional pages dir
-        self.additional_plugins_dir = getattr(modconf, 'additional_plugins_dir', '')
+        self.additional_plugins_dir = getattr(mod_conf, 'additional_plugins_dir', '')
         if self.additional_plugins_dir:
             self.additional_plugins_dir = os.path.abspath(self.additional_plugins_dir)
         logger.info("Additional plugins dir: %s", self.additional_plugins_dir)
 
         # Web UI timezone
-        self.timezone = getattr(modconf, 'timezone', 'Europe/Paris')
+        self.timezone = getattr(mod_conf, 'timezone', 'Europe/Paris')
         if self.timezone:
             logger.info("Setting our timezone to %s", self.timezone)
             os.environ['TZ'] = self.timezone
@@ -296,11 +354,11 @@ class WebuiBroker(BaseModule, Daemon):
         # All the hosts and services that are in a HARD non OK/UP state
         # are considered as problems if their
         # business_impact is greater than or equal this value
-        self.problems_business_impact = int(getattr(modconf, 'problems_business_impact', '1'))
+        self.problems_business_impact = int(getattr(mod_conf, 'problems_business_impact', '1'))
         # important_problems_business_impact is used to filter
         # the alerting badges in the header bar (default is 3)
         self.important_problems_business_impact = \
-            int(getattr(modconf, 'important_problems_business_impact', '3'))
+            int(getattr(mod_conf, 'important_problems_business_impact', '3'))
         logger.info("minimum business impacts, all UI: %s, most important: %s",
                     self.problems_business_impact, self.important_problems_business_impact)
 
@@ -310,17 +368,17 @@ class WebuiBroker(BaseModule, Daemon):
 
         # Inner computation rules for the problems
         self.disable_inner_problems_computation = \
-            int(getattr(modconf, 'disable_inner_problems_computation', '0'))
+            int(getattr(mod_conf, 'disable_inner_problems_computation', '0'))
 
         # Used in the dashboard view to select background color for percentages
-        self.hosts_states_warning = int(getattr(modconf, 'hosts_states_warning', '95'))
-        self.hosts_states_critical = int(getattr(modconf, 'hosts_states_critical', '90'))
-        self.services_states_warning = int(getattr(modconf, 'services_states_warning', '95'))
-        self.services_states_critical = int(getattr(modconf, 'services_states_critical', '90'))
+        self.hosts_states_warning = int(getattr(mod_conf, 'hosts_states_warning', '95'))
+        self.hosts_states_critical = int(getattr(mod_conf, 'hosts_states_critical', '90'))
+        self.services_states_warning = int(getattr(mod_conf, 'services_states_warning', '95'))
+        self.services_states_critical = int(getattr(mod_conf, 'services_states_critical', '90'))
 
         # Web UI information
-        self.app_version = getattr(modconf, 'about_version', WEBUI_VERSION)
-        self.app_copyright = getattr(modconf, 'about_copyright', WEBUI_COPYRIGHT)
+        self.app_version = getattr(mod_conf, 'about_version', WEBUI_VERSION)
+        self.app_copyright = getattr(mod_conf, 'about_copyright', WEBUI_COPYRIGHT)
         self.app_license = WEBUI_LICENSE
 
         # We will save all widgets
@@ -348,6 +406,11 @@ class WebuiBroker(BaseModule, Daemon):
         self.rg.load_external_queue(self.from_q)
         # Return True to confirm correct initialization
         return True
+
+    def setup_new_conf(self):
+        """Abstract method - best is to override"""
+        logger.info("In setup_new_conf")
+        time.sleep(1)
 
     def do_loop_turn(self):
         """This function is called/used when you need a module with
@@ -487,8 +550,8 @@ class WebuiBroker(BaseModule, Daemon):
                     # os.mkdir(dir)
                     os.makedirs(directory, mode=0o777)
                     logger.info("Created directory: %s", directory)
-                except Exception as e:
-                    logger.error("Directory creation failed: %s, error: %s", directory, str(e))
+                except Exception as exp:
+                    logger.error("Directory creation failed: %s, error: %s", directory, str(exp))
             else:
                 logger.debug("Still existing directory: %s", directory)
 
@@ -532,33 +595,23 @@ class WebuiBroker(BaseModule, Daemon):
                     else:
                         logger.debug("- %s for %s", route.name, route.rule)
 
-            # We will protect the operations on
-            # the non read+write with a lock and
-            # 2 int
-            self.global_lock = threading.RLock()
-            self.nb_readers = 0
-            self.nb_writers = 0
-
-            self.data_thread = None
-            self.ls_thread = None
-
             # Launch the data thread ...
-            self.data_thread = threading.Thread(None, self.manage_brok_thread, 'datathread')
-            self.data_thread.start()
+            self.my_data_thread = threading.Thread(None, self.manage_brok_thread, 'datathread')
+            self.my_data_thread.start()
             # TODO: look for alive and killing
 
             # Launch the Alignak arbiter data thread ...
             if self.alignak_endpoint:
                 logger.info("Starting Alignak arbiter check thread...")
-                self.fmwk_thread = threading.Thread(None, self.fmwk_thread, 'fmwk_hread')
-                self.fmwk_thread.start()
+                self.my_fmwk_thread = threading.Thread(None, self.fmwk_thread, 'fmwk_hread')
+                self.my_fmwk_thread.start()
 
             logger.info("starting Web UI server on %s:%d ...", self.host, self.port)
             bottle.TEMPLATES.clear()
             webui_app.run(host=self.host, port=self.port,
                           server=self.http_backend, **self.serveropts)
-        except Exception as e:
-            logger.error("do_main exception: %s", str(e))
+        except Exception as exp:
+            logger.error("do_main exception: %s", str(exp))
             logger.error("traceback: %s", traceback.format_exc())
             exit(1)
 
@@ -707,7 +760,7 @@ class WebuiBroker(BaseModule, Daemon):
                     logger.error("Exception type: %s", type(exp))
                     logger.error("Back trace of this kill: %s", traceback.format_exc())
                     # No need to raise here, we are in a thread, exit!
-                    os._exit(2)
+                    os.exit(2)
                 finally:
                     # logger.debug("manage_brok_thread finally")
                     # We can remove us as a writer from now. It's NOT an atomic operation
@@ -731,6 +784,7 @@ class WebuiBroker(BaseModule, Daemon):
 
         req = requests.Session()
         alignak_timestamp = 0
+        errors_count = 0
         while not self.interrupted:
             # Get Alignak status
             try:
@@ -740,7 +794,12 @@ class WebuiBroker(BaseModule, Daemon):
                 self.alignak_livestate = data.get('livestate', 'Unknown')
                 logger.debug("[fmwk_thread] Livestate: %s", data)
             except Exception as exp:
-                logger.info("[fmwk_thread] get status, exception: %s", exp)
+                errors_count += 1
+                logger.debug("[fmwk_thread] get status, exception: %s", exp)
+                if errors_count > 10:
+                    errors_count = 0
+                    logger.info("[fmwk_thread] get status (more than 10 errors), "
+                                "exception: %s", exp)
 
             try:
                 # Get Alignak most recent events
@@ -762,7 +821,12 @@ class WebuiBroker(BaseModule, Daemon):
                         self.alignak_events.appendleft(log)
                 logger.debug("[fmwk_thread] %d log events", len(self.alignak_events))
             except Exception as exp:
-                logger.info("[fmwk_thread] get events, exception: %s", exp)
+                errors_count += 1
+                logger.debug("[fmwk_thread] get events, exception: %s", exp)
+                if errors_count > 10:
+                    errors_count = 0
+                    logger.info("[fmwk_thread] get events (more than 10 errors), "
+                                "exception: %s", exp)
 
             # Sleep for a while...
             time.sleep(self.alignak_check_period)
@@ -871,14 +935,15 @@ class WebuiBroker(BaseModule, Daemon):
         except Exception as exp:
             logger.error("loading plugin %s, exception: %s", fdir, str(exp))
 
+    # pylint: disable=no-self-use
     def get_url(self, name):
         """Get URL for a named route"""
         logger.debug("get_url for '%s'", name)
 
         try:
             return webui_app.get_url(name)
-        except Exception as e:
-            logger.error("get_url, exception: %s", str(e))
+        except Exception as exp:
+            logger.error("get_url, exception: %s", str(exp))
 
         return '/'
 
@@ -898,6 +963,7 @@ class WebuiBroker(BaseModule, Daemon):
         webui_app.route(static_route, callback=plugin_static)
 
     def declare_common_static(self):
+        # pylint: disable=unused-variable
         """Declare the common static routes"""
         @webui_app.route('/static/photos/:path#.+#')
         def give_photo(path):
@@ -1077,6 +1143,7 @@ class WebuiBroker(BaseModule, Daemon):
 
         return search
 
+    # pylint: disable=dangerous-default-value
     def update_search_string_with_default_filters(self, requested_search, filters=[], prepend=True,
                                                   redirect=True):
         search = requested_search or ''
@@ -1138,6 +1205,12 @@ class WebuiBroker(BaseModule, Daemon):
     # pylint: disable=no-self-use
     def get_user(self):
         return request.environ.get('USER', None)
+
+    def get_config(self, key=None, value=None):
+        if not key:
+            return self.my_configuration
+
+        return getattr(self.my_configuration, key, value)
 
 
 @webui_app.hook('before_request')

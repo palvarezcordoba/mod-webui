@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
+import logging
 import traceback
 
 import pymongo
@@ -9,7 +10,6 @@ import pymongo
 from .metamodule import MetaModule
 
 # Specific logger configuration
-import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
@@ -36,7 +36,7 @@ class LogsMetaModule(MetaModule):
             self.module = modules[0]
         else:
             try:
-                self.module = MongoDBLogs(app.modconf)
+                self.module = MongoDBLogs(app.get_config())
             except Exception as exp:
                 logger.warning('Exception %s', str(exp))
 
@@ -89,7 +89,7 @@ class MongoDBLogs(object):
         self.mongodb_fsync = getattr(mod_conf, 'mongodb_fsync', "True") == "True"
         self.is_connected = False
         self.con = None
-        self.db = None
+        self.database = None
 
         if not self.uri:
             logger.warning("[mongo-logs] No Mongodb connection configured!")
@@ -118,24 +118,24 @@ class MongoDBLogs(object):
                 self.con = MongoClient(self.uri, fsync=self.mongodb_fsync, connect=True)
             logger.info("[mongo-logs] connected to mongodb: %s", self.uri)
 
-            self.db = getattr(self.con, self.database)
+            self.database = getattr(self.con, self.database)
             logger.info("[mongo-logs] connected to the database: %s", self.database)
 
             if self.username and self.password:
-                self.db.authenticate(self.username, self.password)
+                self.database.authenticate(self.username, self.password)
                 logger.info("[mongo-logs] user authenticated: %s", self.username)
 
             # Check if the configured logs collection exist
-            logger.info("[mongo-logs] DB collections: %s", self.db.collection_names())
-            if self.logs_collection not in self.db.collection_names():
+            logger.info("[mongo-logs] DB collections: %s", self.database.collection_names())
+            if self.logs_collection not in self.database.collection_names():
                 logger.warning("[mongo-logs] configured logs collection '%s' "
                                "does not exist in the database", self.logs_collection)
             else:
                 self.is_connected = True
                 logger.info('[mongo-logs] database connection established')
-        except Exception as e:
-            logger.error("[mongo-logs] Exception: %s", str(e))
-            logger.debug("[mongo-logs] Exception type: %s", type(e))
+        except Exception as exp:
+            logger.error("[mongo-logs] Exception: %s", str(exp))
+            logger.debug("[mongo-logs] Exception type: %s", type(exp))
             logger.debug("[mongo-logs] Back trace of this kill: %s", traceback.format_exc())
             # Depending on exception type, should raise ...
             self.is_connected = False
@@ -152,7 +152,7 @@ class MongoDBLogs(object):
         if not self.uri:
             return None
 
-        if not self.db:
+        if not self.database:
             logger.error("[mongo-logs] error Problem during init phase, no database connection")
             return []
 
@@ -162,8 +162,8 @@ class MongoDBLogs(object):
             filters = {}
 
         query = []
-        for k, v in list(filters.items()):
-            query.append({k: v})
+        for key, value in list(filters.items()):
+            query.append({key: value})
         if range_start:
             query.append({'time': {'$gte': range_start}})
         if range_end:
@@ -176,10 +176,10 @@ class MongoDBLogs(object):
         records = []
         try:
             if limit:
-                records = self.db[self.logs_collection].find(query).sort([
+                records = self.database[self.logs_collection].find(query).sort([
                     ("time", pymongo.DESCENDING)]).skip(offset).limit(limit)
             else:
-                records = self.db[self.logs_collection].find(query).sort([
+                records = self.database[self.logs_collection].find(query).sort([
                     ("time", pymongo.DESCENDING)]).skip(offset)
 
             logger.debug("[mongo-logs] %d records fetched from database.", records.count())
@@ -193,7 +193,7 @@ class MongoDBLogs(object):
         if not self.uri:
             return None
 
-        if not self.db:
+        if not self.database:
             logger.error("[mongo-logs] error Problem during init phase, no database connection")
             return []
 
@@ -212,7 +212,7 @@ class MongoDBLogs(object):
 
         records = []
         try:
-            for log in self.db[self.hav_collection].find(query).sort(
+            for log in self.database[self.hav_collection].find(query).sort(
                     [("day", pymongo.DESCENDING),
                      ("hostname", pymongo.ASCENDING),
                      ("service", pymongo.ASCENDING)]):

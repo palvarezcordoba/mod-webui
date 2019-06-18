@@ -11,6 +11,13 @@ from bottle import redirect
 
 from ui_user import User
 
+try:
+    from urllib.parse import urlencode
+    from urllib.request import urlopen
+except ImportError:
+    from urllib import urlencode
+    from urllib2 import urlopen
+
 # Will be populated by the UI with it's own value
 app = None
 
@@ -37,9 +44,9 @@ def make_svg(**options):
     if 'size' in options and 'font_size' not in options:
         options['font_size'] = int(options['size'] * 0.6)
 
-    dc = defaults.copy()
-    dc.update(options)
-    options = dc
+    default_value = defaults.copy()
+    default_value.update(options)
+    options = default_value
 
     svg = """
     <svg xmlns="http://www.w3.org/2000/svg"
@@ -59,21 +66,21 @@ def make_svg(**options):
     return svg
 
 
-def _background_color(s):
+def _background_color(name):
     """
         Generate a random background color.
         Brighter colors are dropped because text is white.
 
-        :param s: Seed used by the random generator
+        :param seed: Seed used by the random generator
         (same seed will produce same color every time)
     """
-    seed(s)
-    r = g = b = 255
-    while r + g + b > 255 * 2:
-        r = randint(0, 255)
-        g = randint(0, 255)
-        b = randint(0, 255)
-    return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+    seed(name)
+    red = green = blue = 255
+    while red + green + blue > 255 * 2:
+        red = randint(0, 255)
+        green = randint(0, 255)
+        blue = randint(0, 255)
+    return '#{:02x}{:02x}{:02x}'.format(red, green, blue)
 
 
 def get_svg_avatar(name, size=256):
@@ -90,23 +97,14 @@ def get_svg_avatar(name, size=256):
 
 def get_gravatar_url(email, size=256, default='404'):
     try:
-        try:
-            from urllib.parse import urlparse, urlencode
-            from urllib.request import urlopen, Request
-            from urllib.error import HTTPError
-        except ImportError:
-            from urlparse import urlparse
-            from urllib import urlencode
-            from urllib2 import urlopen, Request, HTTPError
-
         # import urllib.request, urllib.error, urllib.parse
         # import urllib.request, urllib.parse, urllib.error
         #
         parameters = {'s': size, 'd': default}
         url = "https://secure.gravatar.com/avatar/%s?%s" % (
-            hashlib.md5(email.lower()).hexdigest(), urllib.parse.urlencode(parameters)
+            hashlib.md5(email.lower()).hexdigest(), urlencode(parameters)
         )
-        ret = urllib.request.urlopen(url)
+        ret = urlopen(url)
         if ret.code == 200:
             return url
     except Exception:
@@ -116,7 +114,7 @@ def get_gravatar_url(email, size=256, default='404'):
 
 
 def get_avatar(name):
-    user = app.request.environ['USER']
+    user = app.get_user()
     contact = User.from_contact(app.datamgr.get_contact(name=name, user=user) or app.redirect404())
 
     app.response.set_header("Cache-Control", "public, max-age=3200")

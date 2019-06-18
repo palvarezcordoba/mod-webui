@@ -6,7 +6,7 @@
 %helper = app.helper
 %h = app.datamgr.get_hosts_synthesis(user=user)
 
-%hide_empty = (getattr(app.modconf, 'plugin.hostgroups.hide_empty', '0') == '1')
+%hide_empty = (app.get_config('plugin.hostgroups.hide_empty', '0') == '1')
 
 <div id="hostsgroups">
    <!-- Progress bar -->

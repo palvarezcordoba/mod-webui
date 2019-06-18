@@ -51,8 +51,8 @@ class MetaModule(object):
             logger.debug("searching in module: %s", mod.get_name())
             found = True
             for name in cls._functions:
-                f = getattr(mod, name, None)
-                if not f or not callable(f):
+                fct = getattr(mod, name, None)
+                if not fct or not callable(fct):
                     found = False
             if found:
                 logger.info("Module found: %s", mod.get_name())

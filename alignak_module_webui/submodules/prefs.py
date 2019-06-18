@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
+import logging
 import traceback
 import json
 import time
@@ -11,8 +12,8 @@ import pymongo
 from .metamodule import MetaModule
 
 # Specific logger configuration
-import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
+# pylint: disable=invalid-name
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
 
@@ -39,8 +40,8 @@ class PrefsMetaModule(MetaModule):
             self.module = modules[0]
         else:
             try:
-                self.module = MongoDBPreferences(app.modconf)
-            except Exception as exp:
+                self.module = MongoDBPreferences(app.get_config())
+            except Exception as exp:  # pylint: broad-except
                 logger.warning("%s", str(exp))
 
     def is_available(self):

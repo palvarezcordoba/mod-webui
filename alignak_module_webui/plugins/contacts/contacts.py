@@ -38,19 +38,16 @@ app = None
 
 # Contact page
 def show_contact(name):
-    user = app.request.environ['USER']
+    user = app.get_user()
     contact = app.datamgr.get_contact(name=name, user=user) or app.redirect404()
-
-    c = app.datamgr.get_contact(name="generic-contact", user=user, template=True) or \
-        app.redirect404()
-    logger.info("Contact template: %s", c)
+    logger.debug("Show contact: %s", contact)
 
     return {'contact': User.from_contact(contact)}
 
 
 # All contacts
 def show_contacts():
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     return {'contacts': sorted(app.datamgr.get_contacts(user=user), key=lambda c: c.contact_name)}

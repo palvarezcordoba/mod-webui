@@ -3,19 +3,16 @@
 # vim: ai ts=4 sts=4 et sw=4 nu
 
 import time
+import logging
 try:
-    from urllib.parse import urlparse, urlencode
-    from urllib.request import urlopen, Request
-    from urllib.error import HTTPError
+    from urllib.parse import quote
 except ImportError:
-    from urlparse import urlparse
-    from urllib import urlencode
-    from urllib2 import urlopen, Request, HTTPError
+    from urllib import quote
+
 
 from .metamodule import MetaModule
 
 # Specific logger configuration
-import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
@@ -54,6 +51,7 @@ class GraphsMetaModule(MetaModule):
             logger.debug("Got graphs: %s", uris)
 
         for uri in uris:
-            uri['img_src'] = '/graph?url=' + urllib.parse.quote(uri['img_src'])
+            # uri['img_src'] = '/graph?url=' + urllib.parse.quote(uri['img_src'])
+            uri['img_src'] = '/graph?url=' + quote(uri['img_src'])
 
         return uris

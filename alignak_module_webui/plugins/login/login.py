@@ -69,8 +69,8 @@ def user_login():
                                "user name was found")
                 bottle.redirect(app.get_url("GetLogin"))
 
-            c = app.datamgr.get_contact(name=user_name)
-            if c:
+            contact = app.datamgr.get_contact(name=user_name)
+            if contact:
                 cookie_value = {
                     'login': user_name,
                     'session': app.user_session,

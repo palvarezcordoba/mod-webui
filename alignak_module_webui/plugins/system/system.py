@@ -23,13 +23,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
+import traceback
+import json
 import time
 import datetime
-import json
-import requests
-import traceback
-
 from copy import deepcopy
+import requests
+
 from logevent import LogEvent
 
 # Specific logger configuration
@@ -138,9 +138,22 @@ def _get_alignak_status():
     """Get Alignak overall status from the Arbiter API:
     {
         "livestate": {
-            "long_output": "broker-master - daemon is alive and reachable.\npoller-master - daemon is alive and reachable.\nreactionner-master - daemon is not reachable.\nreceiver-master - daemon is alive and reachable.\nscheduler-master - daemon is alive and reachable.",
+            "long_output": "
+                broker-master - daemon is alive and reachable.\n
+                poller-master - daemon is alive and reachable.\n
+                reactionner-master - daemon is not reachable.\n
+                receiver-master - daemon is alive and reachable.\n
+                scheduler-master - daemon is alive and reachable.
+            ",
             "output": "Some of my daemons are not reachable.",
-            "perf_data": "'modules'=2 'timeperiods'=4 'services'=100 'servicegroups'=1 'commands'=10 'hosts'=13 'hostgroups'=5 'contacts'=2 'contactgroups'=2 'notificationways'=2 'checkmodulations'=0 'macromodulations'=0 'servicedependencies'=40 'hostdependencies'=0 'arbiters'=1 'schedulers'=1 'reactionners'=1 'brokers'=1 'receivers'=1 'pollers'=1 'realms'=1 'resultmodulations'=0 'businessimpactmodulations'=0 'escalations'=0 'hostsextinfo'=0 'servicesextinfo'=0",
+            "perf_data": "
+                'modules'=2 'timeperiods'=4 'services'=100 'servicegroups'=1 'commands'=10
+                'hosts'=13 'hostgroups'=5 'contacts'=2 'contactgroups'=2 'notificationways'=2
+                'checkmodulations'=0 'macromodulations'=0 'servicedependencies'=40
+                'hostdependencies'=0 'arbiters'=1 'schedulers'=1 'reactionners'=1 'brokers'=1
+                'receivers'=1 'pollers'=1 'realms'=1 'resultmodulations'=0
+                'businessimpactmodulations'=0 'escalations'=0 'hostsextinfo'=0 'servicesextinfo'=0
+            ",
             "state": "up",
             "timestamp": 1542611507
         },
@@ -260,7 +273,7 @@ def alignak_events():
         logger.info("[WebUI-system] Alignak is not configured. Redirecting to the home page.")
         app.bottle.redirect(app.get_url("Dashboard"))
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     midnight_timestamp = time.mktime(datetime.date.today().timetuple())
@@ -306,11 +319,11 @@ def alignak_events():
             # -------------------------------------------
             data = deepcopy(log)
             if event.event_type == 'RETENTION':
-                type = "retention_save"
+                evt_type = "retention_save"
                 if event.data['state_type'].upper() == 'LOAD':
-                    type = "retention_load"
+                    evt_type = "retention_load"
                 data.update({
-                    "type": type
+                    "type": evt_type
                 })
 
             if event.event_type == 'TIMEPERIOD':
@@ -419,7 +432,7 @@ def alignak_events():
 
 
 def system_parameters():
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     # configs = app.datamgr.get_configs()
@@ -435,7 +448,7 @@ def alignak_parameters():
     in a clean fashion. All schedulers provide the same configuration and maco information
     that may be displayed separately to the end user.
     """
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     # All the received scheduler configurations send their configuratio nwhich is composed of:
@@ -458,7 +471,7 @@ def alignak_parameters():
 
 
 def system_page():
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     schedulers = app.datamgr.get_schedulers()

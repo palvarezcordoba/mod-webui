@@ -145,69 +145,70 @@ class WebUIDataManager(object):
             hosts = self.get_hosts(user=user)
         logger.debug("[datamanager] get_hosts_synthesis, %d hosts", len(hosts))
 
-        host = {
+        host_synth = {
             'nb_elts': len(hosts)
         }
-        if hosts:
-            host['bi'] = max(h.business_impact for h in hosts)
-
-            for state in ['up', 'pending']:
-                host['nb_' + state] = sum(1 for host in hosts if host.state == state.upper())
-                host['pct_' + state] = round(100.0 * host['nb_' + state] / host['nb_elts'], 1)
-            for state in ['down', 'unreachable', 'unknown']:
-                host['nb_' + state] = sum(1 for host in hosts if host.state == state.upper()
-                                          and not (host.problem_has_been_acknowledged
-                                                   or host.in_scheduled_downtime))
-                host['pct_' + state] = round(100.0 * host['nb_' + state] / host['nb_elts'], 1)
-
-            # Our own computation !
-            # ------
-            # Shinken/Alignak does not always reflect the "problem" state
-            # from a user point of view ...
-            # To make UI more consistent, build our own problems counter!
-            if not self.disable_inner_problems_computation:
-                host['nb_ack'] = 0
-                host['nb_problems'] = 0
-                host['nb_impacts'] = 0
-                for host in hosts:
-                    if host.state_type.upper() not in ['HARD']:
-                        continue
-                    # An host is a problem if it is in a HARD DOWN or UNKNOWN state
-                    if host.state.lower() in ['down', 'unknown']:
-                        host.is_problem = True
-                    # An host is impacted if it is UNREACHABLE
-                    if host.state.lower() in ['unreachable']:
-                        host.is_impact = True
-
-                    if host.is_problem and host.problem_has_been_acknowledged:
-                        host['nb_ack'] += 1
-
-                    if host.is_problem and not host.problem_has_been_acknowledged:
-                        host['nb_problems'] += 1
-                        if host.is_impact:
-                            host['nb_impacts'] += 1
-            else:
-                host['nb_problems'] = sum(1 for host in hosts if host.is_problem
-                                          and not host.problem_has_been_acknowledged)
-                host['nb_impacts'] = sum(1 for host in hosts if host.is_problem
-                                         and not host.problem_has_been_acknowledged
-                                         and host.is_impact)
-                host['nb_ack'] = sum(1 for host in hosts if host.is_problem
-                                     and host.problem_has_been_acknowledged)
-
-            host['pct_problems'] = round(100.0 * host['nb_problems'] / host['nb_elts'], 1)
-            host['pct_ack'] = round(100.0 * host['nb_ack'] / host['nb_elts'], 1)
-            host['nb_downtime'] = sum(1 for host in hosts if host.in_scheduled_downtime)
-            host['pct_downtime'] = round(100.0 * host['nb_downtime'] / host['nb_elts'], 1)
-        else:
-            host['bi'] = 0
+        if not hosts:
+            host_synth['bi'] = 0
             for state in ['up', 'down', 'unreachable',
                           'pending', 'unknown', 'ack', 'downtime', 'problems']:
-                host['nb_' + state] = 0
-                host['pct_' + state] = 0
+                host_synth['nb_' + state] = 0
+                host_synth['pct_' + state] = 0
+            return host_synth
 
-        logger.debug("[datamanager] get_hosts_synthesis: %s", host)
-        return host
+        host_synth['bi'] = max(h.business_impact for h in hosts)
+
+        for state in ['up', 'pending']:
+            host_synth['nb_' + state] = sum(1 for host in hosts if host.state == state.upper())
+            host_synth['pct_' + state] = round(100.0 * host_synth['nb_' + state] / host_synth['nb_elts'], 1)
+        for state in ['down', 'unreachable', 'unknown']:
+            host_synth['nb_' + state] = sum(1 for host in hosts if host.state == state.upper()
+                                      and not (host.problem_has_been_acknowledged
+                                               or host.in_scheduled_downtime))
+            host_synth['pct_' + state] = round(100.0 * host_synth['nb_' + state] / host_synth['nb_elts'], 1)
+
+        # Our own computation !
+        # ------
+        # Shinken/Alignak does not always reflect the "problem" state
+        # from a user point of view ...
+        # To make UI more consistent, build our own problems counter!
+        if not self.disable_inner_problems_computation:
+            host_synth['nb_ack'] = 0
+            host_synth['nb_problems'] = 0
+            host_synth['nb_impacts'] = 0
+            for host in hosts:
+                if host.state_type.upper() not in ['HARD']:
+                    continue
+                # An host is a problem if it is in a HARD DOWN or UNKNOWN state
+                if host.state.lower() in ['down', 'unknown']:
+                    host.is_problem = True
+                # An host is impacted if it is UNREACHABLE
+                if host.state.lower() in ['unreachable']:
+                    host.is_impact = True
+
+                if host.is_problem and host.problem_has_been_acknowledged:
+                    host_synth['nb_ack'] += 1
+
+                if host.is_problem and not host.problem_has_been_acknowledged:
+                    host_synth['nb_problems'] += 1
+                    if host.is_impact:
+                        host_synth['nb_impacts'] += 1
+        else:
+            host_synth['nb_problems'] = sum(1 for host in hosts if host.is_problem
+                                      and not host.problem_has_been_acknowledged)
+            host_synth['nb_impacts'] = sum(1 for host in hosts if host.is_problem
+                                     and not host.problem_has_been_acknowledged
+                                     and host.is_impact)
+            host_synth['nb_ack'] = sum(1 for host in hosts if host.is_problem
+                                 and host.problem_has_been_acknowledged)
+
+        host_synth['pct_problems'] = round(100.0 * host_synth['nb_problems'] / host_synth['nb_elts'], 1)
+        host_synth['pct_ack'] = round(100.0 * host_synth['nb_ack'] / host_synth['nb_elts'], 1)
+        host_synth['nb_downtime'] = sum(1 for host in hosts if host.in_scheduled_downtime)
+        host_synth['pct_downtime'] = round(100.0 * host_synth['nb_downtime'] / host_synth['nb_elts'], 1)
+
+        logger.debug("[datamanager] get_hosts_synthesis: %s", host_synth)
+        return host_synth
 
     def get_important_hosts_synthesis(self, user=None):
         return self.get_hosts_synthesis(elts=self.get_important_hosts(user))
@@ -255,89 +256,90 @@ class WebUIDataManager(object):
                      count, service['nb_problems'], service['nb_elts'])
         return round(100.0 * (count / service['nb_elts']), 1)
 
-    def get_services_synthesis(self, elts=None, user=None):
-        if elts is not None:
-            services = [item for item in elts if item.__class__.my_type == 'service']
+    def get_services_synthesis(self, items=None, user=None):
+        if items is not None:
+            services = [item for item in items if item.__class__.my_type == 'service']
         else:
             services = self.get_services(user=user)
         logger.debug("[datamanager] get_services_synthesis, %d services", len(services))
 
-        service = {
+        svc_synth = {
             'nb_elts': len(services)
         }
-        if services:
-            service['bi'] = max(s.business_impact for s in services)
-
-            for state in ['ok', 'pending']:
-                service['nb_' + state] = \
-                    sum(1 for service in services if service.state == state.upper())
-                service['pct_' + state] = \
-                    round(100.0 * service['nb_' + state] / service['nb_elts'], 1)
-            for state in ['warning', 'critical', 'unreachable', 'unknown']:
-                service['nb_' + state] = \
-                    sum(1 for service in services if service.state == state.upper()
-                        and not (service.problem_has_been_acknowledged
-                                 or service.in_scheduled_downtime))
-                service['pct_' + state] = \
-                    round(100.0 * service['nb_' + state] / service['nb_elts'], 1)
-
-            service['nb_impacts'] = 0
-            # Our own computation !
-            # ------
-            # Shinken/Alignak does not always reflect the "problem"
-            # state from a user point of view ...
-            # To make UI more consistent, build our own problems counter!
-            if not self.disable_inner_problems_computation:
-                service['nb_ack'] = 0
-                service['nb_problems'] = 0
-                for service in services:
-                    if service.state_type.upper() not in ['HARD']:
-                        continue
-                    # A service is a problem if it is in a HARD WARNING, CRITICAL or UNKNOWN state
-                    if service.state.lower() in ['warning', 'critical', 'unknown']:
-                        service.is_problem = True
-                    # A service is impacted if its host is not UP
-                    if service.host.state not in ['up']:
-                        service.is_impact = True
-                    # A service is impacted if it is UNREACHABLE
-                    if service.state.lower() in ['unreachable']:
-                        service.is_impact = True
-
-                    if service.is_problem and service.problem_has_been_acknowledged:
-                        service['nb_ack'] += 1
-
-                    if service.is_problem and not service.problem_has_been_acknowledged:
-                        service['nb_problems'] += 1
-                        if service.is_impact:
-                            service['nb_impacts'] += 1
-            else:
-                service['nb_problems'] = \
-                    sum(1 for service in services if service.is_problem
-                        and not service.problem_has_been_acknowledged)
-                service['nb_impacts'] = \
-                    sum(1 for service in services if service.is_problem
-                        and not service.problem_has_been_acknowledged and service.is_impact)
-                service['nb_ack'] = \
-                    sum(1 for service in services if service.is_problem
-                        and service.problem_has_been_acknowledged)
-
-            service['pct_problems'] = round(100.0 * service['nb_problems'] / service['nb_elts'], 1)
-            service['pct_ack'] = round(100.0 * service['nb_ack'] / service['nb_elts'], 1)
-            service['nb_downtime'] = sum(1 for service in services if service.in_scheduled_downtime)
-            service['pct_downtime'] = round(100.0 * service['nb_downtime'] / service['nb_elts'], 1)
-        else:
-            service['bi'] = 0
+        if not services:
+            svc_synth['bi'] = 0
             for state in ['ok', 'warning', 'critical',
                           'pending', 'unreachable', 'unknown',
                           'ack', 'downtime', 'problems']:
-                service['nb_' + state] = 0
-                service['pct_' + state] = 0
+                svc_synth['nb_' + state] = 0
+                svc_synth['pct_' + state] = 0
+            return svc_synth
 
-        logger.debug("[datamanager] get_services_synthesis: %s", service)
-        return service
+        svc_synth['bi'] = max(s.business_impact for s in services)
+
+        for state in ['ok', 'pending']:
+            svc_synth['nb_' + state] = \
+                sum(1 for service in services if service.state == state.upper())
+            svc_synth['pct_' + state] = \
+                round(100.0 * svc_synth['nb_' + state] / svc_synth['nb_elts'], 1)
+        for state in ['warning', 'critical', 'unreachable', 'unknown']:
+            svc_synth['nb_' + state] = \
+                sum(1 for service in services if service.state == state.upper()
+                    and not (service.problem_has_been_acknowledged
+                             or service.in_scheduled_downtime))
+            svc_synth['pct_' + state] = \
+                round(100.0 * svc_synth['nb_' + state] / svc_synth['nb_elts'], 1)
+
+        svc_synth['nb_impacts'] = 0
+        # Our own computation !
+        # ------
+        # Shinken/Alignak does not always reflect the "problem"
+        # state from a user point of view ...
+        # To make UI more consistent, build our own problems counter!
+        if not self.disable_inner_problems_computation:
+            svc_synth['nb_ack'] = 0
+            svc_synth['nb_problems'] = 0
+            for service in services:
+                if service.state_type.upper() not in ['HARD']:
+                    continue
+                # A service is a problem if it is in a HARD WARNING, CRITICAL or UNKNOWN state
+                if service.state.lower() in ['warning', 'critical', 'unknown']:
+                    service.is_problem = True
+                # A service is impacted if its host is not UP
+                if service.host.state not in ['up']:
+                    service.is_impact = True
+                # A service is impacted if it is UNREACHABLE
+                if service.state.lower() in ['unreachable']:
+                    service.is_impact = True
+
+                if service.is_problem and service.problem_has_been_acknowledged:
+                    svc_synth['nb_ack'] += 1
+
+                if service.is_problem and not service.problem_has_been_acknowledged:
+                    svc_synth['nb_problems'] += 1
+                    if service.is_impact:
+                        svc_synth['nb_impacts'] += 1
+        else:
+            svc_synth['nb_problems'] = \
+                sum(1 for service in services if service.is_problem
+                    and not service.problem_has_been_acknowledged)
+            svc_synth['nb_impacts'] = \
+                sum(1 for service in services if service.is_problem
+                    and not service.problem_has_been_acknowledged and service.is_impact)
+            svc_synth['nb_ack'] = \
+                sum(1 for service in services if service.is_problem
+                    and service.problem_has_been_acknowledged)
+
+        svc_synth['pct_problems'] = round(100.0 * svc_synth['nb_problems'] / svc_synth['nb_elts'], 1)
+        svc_synth['pct_ack'] = round(100.0 * svc_synth['nb_ack'] / svc_synth['nb_elts'], 1)
+        svc_synth['nb_downtime'] = sum(1 for service in services if service.in_scheduled_downtime)
+        svc_synth['pct_downtime'] = round(100.0 * svc_synth['nb_downtime'] / svc_synth['nb_elts'], 1)
+
+        logger.debug("[datamanager] get_services_synthesis: %s", svc_synth)
+        return svc_synth
 
     def get_important_services_synthesis(self, user=None):
-        return self.get_services_synthesis(elts=self.get_important_services(user))
+        return self.get_services_synthesis(items=self.get_important_services(user))
 
     ##
     # Elements

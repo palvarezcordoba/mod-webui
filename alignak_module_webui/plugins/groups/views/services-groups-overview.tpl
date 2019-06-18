@@ -6,7 +6,7 @@
 %helper = app.helper
 %s = app.datamgr.get_services_synthesis(user=user)
 
-%hide_empty = (getattr(app.modconf, 'plugin.servicegroups.hide_empty', '0') == '1')
+%hide_empty = (app.get_config('plugin.servicegroups.hide_empty', '0') == '1')
 
 <div id="servicesgroups">
    <!-- Progress bar -->

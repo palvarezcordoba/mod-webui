@@ -41,7 +41,7 @@ def show_pref():
 
 
 def get_pref():
-    user = app.request.environ.get('USER', None)
+    user = app.get_user()
     key = app.request.query.get('key', None)
 
     if not key or not user:
@@ -51,7 +51,7 @@ def get_pref():
 
 
 def get_common_pref():
-    user = app.request.environ.get('USER', None)
+    user = app.get_user()
     key = app.request.query.get('key', None)
 
     if not key or not user:
@@ -61,29 +61,29 @@ def get_common_pref():
 
 
 def save_pref():
-    user = app.request.environ.get('USER', None)
+    user = app.get_user()
     key = app.request.query.get('key', None)
     value = app.request.query.get('value', None)
 
     if key is None or value is None:
         return
 
-    s = json.dumps('{%s: %s}' % (key, value))
-    logger.debug("We will save pref %s=%s, as %s", key, value, s)
+    pref = json.dumps('{%s: %s}' % (key, value))
+    logger.debug("We will save pref %s=%s, as %s", key, value, pref)
 
     app.prefs_module.set_ui_user_preference(user, key, value)
 
 
 def save_common_pref():
-    user = app.request.environ.get('USER', None)
+    user = app.get_user()
     key = app.request.query.get('key', None)
     value = app.request.query.get('value', None)
 
     if key is None or value is None:
         return
 
-    s = json.dumps('{%s: %s}' % (key, value))
-    logger.debug("We will save common pref %s=%s, as %s", key, value, s)
+    pref = json.dumps('{%s: %s}' % (key, value))
+    logger.debug("We will save common pref %s=%s, as %s", key, value, pref)
 
     if user.is_administrator():
         app.prefs_module.set_ui_common_preference(key, value)

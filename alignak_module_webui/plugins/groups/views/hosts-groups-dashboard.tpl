@@ -5,6 +5,7 @@
 %h = app.datamgr.get_hosts_synthesis(user=user)
 
 %view_empty = (getattr(app.modconf, 'plugin.hostgroups.view_empty', '0') == '1')
+%view_empty = (app.get_config('plugin.hostgroups.view_empty', '0') == '1')
 
 <div id="hostsgroups">
    <!-- Progress bar -->

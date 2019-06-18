@@ -36,7 +36,7 @@ app = None
 
 # Our page
 def get_page():
-    user = app.request.environ['USER']
+    user = app.get_user()
 
     search = app.get_and_update_search_string_with_problems_filters()
 

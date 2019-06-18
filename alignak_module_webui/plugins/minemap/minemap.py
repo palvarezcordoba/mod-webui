@@ -29,7 +29,7 @@ app = None
 
 
 def show_minemap():
-    user = app.request.environ['USER']
+    user = app.get_user()
 
     # Apply search filter if exists ...
     search = app.request.query.get('search', "type:host")

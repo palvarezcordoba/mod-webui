@@ -48,7 +48,7 @@ The supported event are listed in the event_type variable
 
 import re
 
-# pylint: disable=bad-continuation
+# pylint: disable=bad-continuation, invalid-name
 EVENT_TYPE_PATTERN = re.compile(
     r'^(TIMEPERIOD TRANSITION|EXTERNAL COMMAND|RETENTION SAVE|RETENTION LOAD|'
     r'CURRENT HOST STATE|CURRENT SERVICE STATE|HOST COMMENT|SERVICE COMMENT|'

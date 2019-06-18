@@ -53,7 +53,7 @@ class User(Contact):
 
         return getattr(self, 'name', 'Unnamed')
 
-    def get_name(self):
+    def get_name(self, index=False):
         name = self.get_username()
         if getattr(self, 'realname', None):
             name = "%s %s" % (getattr(self, 'firstname'), getattr(self, 'realname'))

@@ -26,23 +26,17 @@
 
 import time
 import datetime
-# import urllib.request, urllib.parse, urllib.error
-try:
-    from urllib.parse import urlparse, urlencode
-    from urllib.request import urlopen, Request
-    from urllib.error import HTTPError
-except ImportError:
-    from urlparse import urlparse
-    from urllib import urlencode
-    from urllib2 import urlopen, Request, HTTPError
-
+import arrow
+import logging
 
 from collections import OrderedDict
 
-import arrow
+try:
+    from urllib.parse import unquote
+except ImportError:
+    from urllib import unquote
 
 # Specific logger configuration
-import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
@@ -59,8 +53,8 @@ def _get_availability(*args, **kwargs):
 
 
 def get_element(name):
-    user = app.bottle.request.environ['USER']
-    name = urllib.parse.unquote(name)
+    user = app.get_user()
+    name = unquote(name)
     elt = app.datamgr.get_element(name, user) or app.redirect404()
 
     today = arrow.now().replace(hour=0, minute=0, second=0)
@@ -99,7 +93,7 @@ def get_element(name):
 
 
 def get_page():
-    user = app.bottle.request.environ['USER']
+    user = app.get_user()
 
     # Apply search filter if exists ...
     search = app.request.query.get('search', "type:host")

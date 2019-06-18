@@ -34,7 +34,7 @@ app = None
 
 
 def show_impacts():
-    user = app.request.environ['USER']
+    user = app.get_user()
 
     search = app.get_and_update_search_string_with_problems_filters()
     items = app.datamgr.search_hosts_and_services(search + ' is:impact', user)
@@ -50,18 +50,18 @@ def show_impacts():
 
 
 def impacts_widget():
-    d = show_impacts()
+    html = show_impacts()
 
-    wid = app.request.query.get('wid', 'widget_impacts_' + str(int(time.time())))
+    widget = app.request.query.get('wid', 'widget_impacts_' + str(int(time.time())))
     collapsed = (app.request.query.get('collapsed', 'False') == 'True')
 
     nb_elements = max(1, int(app.request.query.get('nb_elements', '5')))
     # Now filter for the good number of impacts to show
     new_impacts = {}
-    for (k, v) in d['impacts'].items():
-        if k <= nb_elements:
-            new_impacts[k] = v
-    d['impacts'] = new_impacts
+    for key, value in html['impacts'].items():
+        if key <= nb_elements:
+            new_impacts[key] = value
+    html['impacts'] = new_impacts
 
     options = {
         'nb_elements': {
@@ -69,10 +69,14 @@ def impacts_widget():
         }
     }
 
-    d.update({'wid': wid, 'collapsed': collapsed, 'options': options,
-              'base_url': '/widget/impacts', 'title': 'Impacts'})
+    html.update({
+        'wid': widget,
+        'collapsed': collapsed,
+        'options': options,
+        'base_url': '/widget/impacts',
+        'title': 'Impacts'})
 
-    return d
+    return html
 
 
 widget_desc = """

@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4 nu
 
-from .metamodule import MetaModule
-
 import traceback
 import crypt
+import logging
+
+from .metamodule import MetaModule
 
 # Specific logger configuration
-import logging
 from alignak.log import ALIGNAK_LOGGER_NAME
 logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
 
@@ -72,14 +72,14 @@ class AuthMetaModule(MetaModule):
                         self._user_login = username
 
                         # Session identifier ?
-                        f = getattr(mod, 'get_session', None)
-                        if f and callable(f):
+                        fct = getattr(mod, 'get_session', None)
+                        if fct and callable(fct):
                             self._session = mod.get_session()
                             logger.info("User session: %s", self._session)
 
                         # User information ?
-                        f = getattr(mod, 'get_user_info', None)
-                        if f and callable(f):
+                        fct = getattr(mod, 'get_user_info', None)
+                        if fct and callable(fct):
                             self._user_info = mod.get_user_info()
                             logger.info("User info: %s", self._user_info)
                 except Exception as exp:
@@ -133,10 +133,10 @@ class AuthMetaModule(MetaModule):
         """
         logger.info("Authenticating user '%s'", username)
 
-        c = self.app.datamgr.get_contact(name=username)
-        if not c:
-            c = self.app.datamgr.get_contacts()
-            if not c:
+        contact = self.app.datamgr.get_contact(name=username)
+        if not contact:
+            contact = self.app.datamgr.get_contacts()
+            if not contact:
                 logger.error("the WebUI do not know any user! "
                              "Are you sure it is correctly initialized?")
             else:
@@ -144,26 +144,26 @@ class AuthMetaModule(MetaModule):
                              "having the same name as your user: %s", username)
             self.app.request.environ['MSG'] = "You are not allowed to connect."
             return False
-        p = None
-        if isinstance(c, dict):
-            p = c.get('password', None)
+        contact_password = None
+        if isinstance(contact, dict):
+            contact_password = contact.get('password', None)
         else:
-            p = c.password
+            contact_password = contact.password
 
         # basic checks
-        if not p:
+        if not contact_password:
             logger.error("User %s does not have a password: connection refused",
                          username)
             self.app.request.environ['MSG'] = "No user password set"
             return False
 
-        if p == 'NOPASSWORDSET':
+        if contact_password == 'NOPASSWORDSET':
             logger.error("User %s still has the default password: connection refused",
                          username)
             self.app.request.environ['MSG'] = "Default user password set"
             return False
 
-        if p == password:
+        if contact_password == password:
             logger.info("Authenticated")
             return True
 
@@ -178,8 +178,8 @@ class AuthMetaModule(MetaModule):
         logger.info("Authenticating user '%s'", username)
 
         try:
-            f = open(self.app.htpasswd_file, 'r')
-            for line in f.readlines():
+            pwd_file = open(self.app.htpasswd_file, 'r')
+            for line in pwd_file.readlines():
                 line = line.strip()
                 # Bypass bad lines
                 if ':' not in line:
@@ -191,12 +191,12 @@ class AuthMetaModule(MetaModule):
                 my_hash = elts[1]
 
                 if my_hash[:5] == '$apr1' or my_hash[:3] == '$1$':
-                    h = my_hash.split('$')
-                    magic = h[1]
-                    salt = h[2]
+                    tmp_hash = my_hash.split('$')
+                    magic = tmp_hash[1]
+                    salt = tmp_hash[2]
                 elif my_hash[0] == '$':
-                    h = my_hash.split('$')
-                    magic = h[1]
+                    tmp_hash = my_hash.split('$')
+                    magic = tmp_hash[1]
                 else:
                     magic = None
                     salt = my_hash[:2]
@@ -227,7 +227,7 @@ class AuthMetaModule(MetaModule):
                         "file failed, exception: %s", str(exp))
         finally:
             try:
-                f.close()
+                pwd_file.close()
             except Exception:
                 pass
 

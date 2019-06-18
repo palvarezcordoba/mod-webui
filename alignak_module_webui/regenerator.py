@@ -405,30 +405,30 @@ class Regenerator(object):
 
         # Manage hosts templates
         self.hosts.templates = {}
-        for h in list(inp_hosts.templates.values()):
-            logger.debug("Host template: %s", h)
-            logger.debug("Host template: %s", h)
+        for host in list(inp_hosts.templates.values()):
+            logger.debug("Host template: %s", host)
+            logger.debug("Host template: %s", host)
 
             # Now link Command() objects
-            self.linkify_a_command(h, 'check_command')
-            self.linkify_a_command(h, 'event_handler')
-            self.linkify_a_command(h, 'snapshot_command')
+            self.linkify_a_command(host, 'check_command')
+            self.linkify_a_command(host, 'event_handler')
+            self.linkify_a_command(host, 'snapshot_command')
 
             # Now link timeperiods
-            self.linkify_a_timeperiod_by_name(h, 'notification_period')
-            self.linkify_a_timeperiod_by_name(h, 'check_period')
-            self.linkify_a_timeperiod_by_name(h, 'maintenance_period')
-            self.linkify_a_timeperiod_by_name(h, 'snapshot_period')
+            self.linkify_a_timeperiod_by_name(host, 'notification_period')
+            self.linkify_a_timeperiod_by_name(host, 'check_period')
+            self.linkify_a_timeperiod_by_name(host, 'maintenance_period')
+            self.linkify_a_timeperiod_by_name(host, 'snapshot_period')
 
             # And link contacts too
-            self.linkify_contacts(h, 'contacts')
+            self.linkify_contacts(host, 'contacts')
             logger.debug("Host template %s has contacts: %s", host.get_name(), host.contacts)
 
             # We can really declare this host template
-            self.hosts.add_template(h)
+            self.hosts.add_template(host)
 
         # Now link hosts with their hosts groups, commands and timeperiods
-        for h in inp_hosts:
+        for host in inp_hosts:
             if host.hostgroups:
                 hgs = host.hostgroups
                 if not isinstance(hgs, list):
@@ -448,18 +448,18 @@ class Regenerator(object):
                 logger.debug("Linked %s hostgroups %s", host.get_name(), host.hostgroups)
 
             # Now link Command() objects
-            self.linkify_a_command(h, 'check_command')
-            self.linkify_a_command(h, 'event_handler')
-            self.linkify_a_command(h, 'snapshot_command')
+            self.linkify_a_command(host, 'check_command')
+            self.linkify_a_command(host, 'event_handler')
+            self.linkify_a_command(host, 'snapshot_command')
 
             # Now link timeperiods
-            self.linkify_a_timeperiod_by_name(h, 'notification_period')
-            self.linkify_a_timeperiod_by_name(h, 'check_period')
-            self.linkify_a_timeperiod_by_name(h, 'maintenance_period')
-            self.linkify_a_timeperiod_by_name(h, 'snapshot_period')
+            self.linkify_a_timeperiod_by_name(host, 'notification_period')
+            self.linkify_a_timeperiod_by_name(host, 'check_period')
+            self.linkify_a_timeperiod_by_name(host, 'maintenance_period')
+            self.linkify_a_timeperiod_by_name(host, 'snapshot_period')
 
             # And link contacts too
-            self.linkify_contacts(h, 'contacts')
+            self.linkify_contacts(host, 'contacts')
             logger.debug("Host %s has contacts: %s", host.get_name(), host.contacts)
 
             # Linkify tags
@@ -472,47 +472,47 @@ class Regenerator(object):
             old_host = self.hosts.find_by_name(host.get_name())
             if old_host is not None:
                 self.hosts.remove_item(old_host)
-            self.hosts.add_item(h)
+            self.hosts.add_item(host)
 
         # Linkify services groups with their services
-        for sg in inp_servicegroups:
-            logger.debug("Services group: %s", sg.get_name())
+        for group in inp_servicegroups:
+            logger.debug("Services group: %s", group.get_name())
             new_members = []
-            for (i, sname) in sg.members:
+            for (i, sname) in group.members:
                 if i not in inp_services:
-                    logger.warning("Unknown service %s for services group: %s", sname, sg)
+                    logger.warning("Unknown service %s for services group: %s", sname, group)
                 else:
                     new_members.append(inp_services[i])
 
-            sg.members = new_members
-            logger.debug("- group members: %s", sg.members)
+            group.members = new_members
+            logger.debug("- group members: %s", group.members)
 
         # Merge services groups with real ones
-        for group in inp_servicegroups:
-            logger.debug("Update existing services group: %s", group.get_name())
-            # If the servicegroup already exist, just add the new services into it
-            sg = self.servicegroups.find_by_name(group.get_name())
-            if sg:
+        for service_group in inp_servicegroups:
+            logger.debug("Update existing services group: %s", service_group.get_name())
+            # If the services group already exist, just add the new services into it
+            group = self.servicegroups.find_by_name(service_group.get_name())
+            if group:
                 logger.debug("- update members: %s / %s", group.members, group.servicegroup_members)
                 # Update services and services groups members
-                sg.members = group.members
-                sg.servicegroup_members = group.servicegroup_members
+                group.members = group.members
+                group.servicegroup_members = group.servicegroup_members
                 # Copy group identifiers because they will have changed after a restart
-                sg.id = group.id
-                sg.uuid = group.uuid
+                group.id = group.id
+                group.uuid = group.uuid
             else:
                 logger.debug("- add a group")
-                self.servicegroups.add_item(group)
+                self.servicegroups.add_item(service_group)
 
         # Merge services groups with real ones
         for group in self.servicegroups:
             # Link with the other groups
             new_groups = []
             for sgname in group.servicegroup_members:
-                for sg in self.servicegroups:
-                    if sgname == sg.get_name() or sgname == sg.uuid:
-                        new_groups.append(sg)
-                        logger.debug("Found servicegroup %s", sg.get_name())
+                for group in self.servicegroups:
+                    if sgname == group.get_name() or sgname == group.uuid:
+                        new_groups.append(group)
+                        logger.debug("Found servicegroup %s", group.get_name())
                         break
                 else:
                     logger.warning("No servicegroup %s for servicegroup: %s",
@@ -521,7 +521,7 @@ class Regenerator(object):
         for group in self.servicegroups:
             logger.debug("- members: %s / %s", group.members, group.servicegroup_members)
 
-        # Now link services with hosts, servicesgroups, commands and timeperiods
+        # Now link services with hosts, services groups, commands and time periods
         for service in inp_services:
             if service.servicegroups:
                 sgs = service.servicegroups
@@ -544,17 +544,16 @@ class Regenerator(object):
                              service.get_full_name(), service.servicegroups)
 
             # Now link with host
-            host_name = service.host_name
-            service.host = self.hosts.find_by_name(host_name)
+            service.host = self.hosts.find_by_name(service.get_host_name())
             if service.host:
                 for host_service in service.host.services:
-                    if getattr(host_service, 'service_description', '__UNNAMED_SERVICE__') == \
+                    if getattr(host_service, 'service_description', None) == \
                             service.service_description:
                         service.host.services.remove(host_service)
                         break
                 service.host.services.append(service)
             else:
-                logger.warning("No host %s for service: %s", host_name, service)
+                logger.warning("Service: %s, host not found: %s", service, service.get_host_name())
 
             # Now link Command() objects
             self.linkify_a_command(service, 'check_command')
@@ -605,26 +604,26 @@ class Regenerator(object):
             self.services.add_template(service)
 
         # Add realm of the hosts
-        for h in inp_hosts:
+        for host in inp_hosts:
             # WebUI - Manage realms if declared (Alignak)
-            if getattr(h, 'realm_name', None):
+            if getattr(host, 'realm_name', None):
                 self.realms.add(host.realm_name)
             else:
                 # WebUI - Manage realms if declared (Shinken)
-                if getattr(h, 'realm', None):
+                if getattr(host, 'realm', None):
                     self.realms.add(host.realm)
 
         # Now we can link all impacts/source problem list
         # but only for the new ones here of course
-        for h in inp_hosts:
-            self.linkify_dict_srv_and_hosts(h, 'impacts')
-            self.linkify_dict_srv_and_hosts(h, 'source_problems')
+        for host in inp_hosts:
+            self.linkify_dict_srv_and_hosts(host, 'impacts')
+            self.linkify_dict_srv_and_hosts(host, 'source_problems')
             # todo: refactor this part for Alignak - to be tested.
             # self.linkify_host_and_hosts(h, 'parent_dependencies')
             # self.linkify_host_and_hosts(h, 'child_dependencies')
-            self.linkify_host_and_hosts(h, 'parents')
-            self.linkify_dict_srv_and_hosts(h, 'parent_dependencies')
-            self.linkify_dict_srv_and_hosts(h, 'child_dependencies')
+            self.linkify_host_and_hosts(host, 'parents')
+            self.linkify_dict_srv_and_hosts(host, 'parent_dependencies')
+            self.linkify_dict_srv_and_hosts(host, 'child_dependencies')
 
         # Now services too
         for service in inp_services:

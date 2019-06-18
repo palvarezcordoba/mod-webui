@@ -62,195 +62,193 @@ params = {
 }
 
 
-def _findServiceByName(host, service):
+def _find_service_by_name(host, service):
     logger.debug("[cvhost], search service %s", service)
-    for s in host.services:
-        if re.search(service, s.get_name()):
+    for svc in host.services:
+        if re.search(service, svc.get_name()):
             logger.debug("[cvhost], found!")
-            return s
+            return svc
     return None
 
 
-def get_disks(h):
-    all = {}
+def get_disks(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_dsk_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    service = _find_service_by_name(host, params['svc_dsk_name'])
+    if service:
+        logger.debug("[cvhost], found %s", service.get_full_name())
+        state = service.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(service.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_dsk_used'], m.name) and \
-                            re.match(params['svc_dsk_uom'], m.uom):
-                        all[m.name] = m.value
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_dsk_used'], metric.name) and \
+                            re.match(params['svc_dsk_uom'], metric.uom):
+                        res[metric.name] = metric.value
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
         except Exception as exp:
             logger.warning("[cvhost] get_disks, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_disks %s", all)
-    return state, all
+    logger.debug("[cvhost], get_disks %s", res)
+    return state, res
 
 
-def get_memory(h):
-    all = {}
+def get_memory(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_mem_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    service = _find_service_by_name(host, params['svc_mem_name'])
+    if service:
+        logger.debug("[cvhost], found %s", service.get_full_name())
+        state = service.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(service.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_mem_used'], m.name) and \
-                            re.match(params['svc_mem_uom'], m.uom):
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
-                        all[m.name] = m.value
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_mem_used'], metric.name) and \
+                            re.match(params['svc_mem_uom'], metric.uom):
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
+                        res[metric.name] = metric.value
         except Exception as exp:
             logger.warning("[cvhost] get_memory, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_memory %s", all)
-    return state, all
+    logger.debug("[cvhost], get_memory %s", res)
+    return state, res
 
 
-def get_cpu(h):
-    all = {}
+def get_cpu(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_cpu_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    service = _find_service_by_name(host, params['svc_cpu_name'])
+    if service:
+        logger.debug("[cvhost], found %s", service.get_full_name())
+        state = service.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(service.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_cpu_used'], m.name) and \
-                            re.match(params['svc_cpu_uom'], m.uom):
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
-                        all[m.name] = m.value
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_cpu_used'], metric.name) and \
+                            re.match(params['svc_cpu_uom'], metric.uom):
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
+                        res[metric.name] = metric.value
         except Exception as exp:
             logger.warning("[cvhost] get_cpu, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_cpu %s", all)
-    return state, all
+    logger.debug("[cvhost], get_cpu %s", res)
+    return state, res
 
 
-def get_load(h):
-    all = {}
+def get_load(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_load_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    service = _find_service_by_name(host, params['svc_load_name'])
+    if service:
+        logger.debug("[cvhost], found %s", service.get_full_name())
+        state = service.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(service.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_load_used'], m.name) and \
-                            re.match(params['svc_load_uom'], m.uom):
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
-                        all[m.name] = m.value
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_load_used'], metric.name) and \
+                            re.match(params['svc_load_uom'], metric.uom):
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
+                        res[metric.name] = metric.value
         except Exception as exp:
             logger.warning("[cvhost] get_load, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_load %s", all)
-    return state, all
+    logger.debug("[cvhost], get_load %s", res)
+    return state, res
 
 
-def get_network(h):
-    # all = []
-    all = {}
+def get_network(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_net_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    service = _find_service_by_name(host, params['svc_net_name'])
+    if service:
+        logger.debug("[cvhost], found %s", service.get_full_name())
+        state = service.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(service.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_net_used'], m.name) and \
-                            re.match(params['svc_net_uom'], m.uom):
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
-                        all[m.name] = m.value
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_net_used'], metric.name) and \
+                            re.match(params['svc_net_uom'], metric.uom):
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
+                        res[metric.name] = metric.value
         except Exception as exp:
             logger.warning("[cvhost] get_network, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_network %s", all)
-    return state, all
+    logger.debug("[cvhost], get_network %s", res)
+    return state, res
 
 
-def get_printer(h):
-    all = {}
+def get_printer(host):
+    res = {}
     state = 'UNKNOWN'
 
-    s = _findServiceByName(h, params['svc_prn_name'])
-    if s:
-        logger.debug("[cvhost], found %s", s.get_full_name())
-        state = s.state
+    res = _find_service_by_name(host, params['svc_prn_name'])
+    if res:
+        logger.debug("[cvhost], found %s", res.get_full_name())
+        state = res.state
 
         try:
-            p = PerfDatas(s.perf_data)
-            for m in p:
-                if m.name and m.value is not None:
+            perf_data = PerfDatas(res.perf_data)
+            for metric in perf_data:
+                if metric.name and metric.value is not None:
                     logger.debug("[cvhost], metric '%s' = %s, uom: %s",
-                                 m.name, m.value, m.uom)
-                    if re.search(params['svc_prn_used'], m.name) and \
-                            re.match(params['svc_prn_uom'], m.uom):
-                        logger.debug("[cvhost], got '%s' = %s", m.name, m.value)
-                        all[m.name] = m.value
+                                 metric.name, metric.value, metric.uom)
+                    if re.search(params['svc_prn_used'], metric.name) and \
+                            re.match(params['svc_prn_uom'], metric.uom):
+                        logger.debug("[cvhost], got '%s' = %s", metric.name, metric.value)
+                        res[metric.name] = metric.value
         except Exception as exp:
             logger.warning("[cvhost] get_printer, exception: %s", str(exp))
 
-    logger.debug("[cvhost], get_printer %s", all)
-    return state, all
+    logger.debug("[cvhost], get_printer %s", res)
+    return state, res
 
 
-def get_services(h):
-    # all = []
-    all = {}
+def get_services(host):
+    res = {}
     state = 'UNKNOWN'
 
     # Get host's services list
-    for s in h.services:
-        state = max(state, s.state_id)
+    for service in host.services:
+        state = max(state, service.state_id)
 
-        view_state = s.state
-        if s.problem_has_been_acknowledged:
+        view_state = service.state
+        if service.problem_has_been_acknowledged:
             view_state = 'ACK'
-        if s.in_scheduled_downtime:
+        if service.in_scheduled_downtime:
             view_state = 'DOWNTIME'
         # all.append((s.get_name(), view_state))
-        all[s.get_name()] = view_state
+        res[service.get_name()] = view_state
         # services_states[s.get_name()] = s.state
 
     # Compute the worst state of all packages
-    state = compute_worst_state(all)
+    state = compute_worst_state(res)
 
-    logger.debug("[cvhost], get_services %s", all)
-    return state, all
+    logger.debug("[cvhost], get_services %s", res)
+    return state, res
 
 
 def compute_worst_state(all_states):
@@ -259,9 +257,9 @@ def compute_worst_state(all_states):
         'CRITICAL': 3, 'WARNING': 2, 'PENDING': 1, 'ACK': 1, 'DOWNTIME': 1
     }
     cur_level = 0
-    for (k, v) in all_states.items():
-        logger.debug("[cvhost], compute_worst_state: %s/%s", k, v)
-        level = _ref[v]
+    for (key, value) in all_states.items():
+        logger.debug("[cvhost], compute_worst_state: %s/%s", key, value)
+        level = _ref[value]
         cur_level = max(cur_level, level)
     return {
         3: 'CRITICAL',
@@ -271,21 +269,21 @@ def compute_worst_state(all_states):
 
 
 # pylint: disable=global-statement
-def get_page(name, type):
+def get_page(name, item_type):
     global params
 
     # user = app.check_user_authentication()
 
-    logger.debug("[cvhost], get_page for %s, type: '%s'", name, type)
+    logger.debug("[cvhost], get_page for %s, type: '%s'", name, item_type)
 
     currentdir = os.path.dirname(os.path.realpath(__file__))
-    configuration_file = "%s/%s.cfg" % (currentdir, type)
+    configuration_file = "%s/%s.cfg" % (currentdir, item_type)
     logger.debug("Plugin configuration file: %s", configuration_file)
     try:
         scp = ConfigParser('#', '=')
-        z = params.copy()
-        z.update(scp.parse_config(configuration_file))
-        params = z
+        tmp = params.copy()
+        tmp.update(scp.parse_config(configuration_file))
+        params = tmp
 
         logger.debug("[cvhost] configuration loaded.")
         logger.debug("[cvhost] configuration, load: %s (%s)",
@@ -316,7 +314,7 @@ def get_page(name, type):
     }
 
     # Ok, we can lookup it
-    user = app.request.environ['USER']
+    user = app.get_user()
     host = app.datamgr.get_host(name, user) or app.redirect404()
 
     # Set the host state first
@@ -347,7 +345,7 @@ def get_page(name, type):
     return {
         'app': app,
         'elt': host,
-        'config': type,
+        'config': item_type,
         'all_perfs': all_perfs,
         'all_states': all_states
     }

@@ -135,7 +135,7 @@ def add_ticket(name):
     if not app.helpdesk_module.is_available():
         app.redirect404()
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     elt = app.datamgr.get_element(name, user) or app.redirect404()
     logger.info("adding a ticket for %s from %s", name, user)
 
@@ -185,7 +185,7 @@ def add_ticket_followup(name):
         logger.info("ticket follow-up creation failed, no ticket ID!")
         return {'name': None, 'ticket': 0}
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     elt = app.datamgr.get_element(name, user) or app.redirect404()
     logger.info("adding a ticket follow-up to #%d for %s from %s",
                 ticket, name, user)
@@ -206,7 +206,7 @@ def get_ticket(name):
     if not app.helpdesk_module.is_available():
         app.redirect404()
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     elt = app.datamgr.get_element(name, user) or app.redirect404()
     logger.info("requesting tickets for %s", name)
 
@@ -218,7 +218,7 @@ def get_element_tickets(name):
     if not app.helpdesk_module.is_available():
         app.redirect404()
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     elt = app.datamgr.get_element(name, user) or app.redirect404()
     logger.info("requesting tickets for %s", name)
 
@@ -243,7 +243,7 @@ def get_widget_tickets():
             </center>
         """
 
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     wid = app.request.query.get('wid', 'widget_helpdesk_' + str(int(time.time())))

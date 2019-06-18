@@ -55,8 +55,8 @@ def _get_logs(*args, **kwargs):
     return None
 
 
-# pylint: disable=global-statement
-def load_config(app):
+# pylint: disable=global-statement,unused-argument
+def load_config(the_app):
     global params
 
     currentdir = os.path.dirname(os.path.realpath(__file__))
@@ -64,9 +64,9 @@ def load_config(app):
     logger.info("[logs] Plugin configuration file: %s", configuration_file)
     try:
         scp = ConfigParser('#', '=')
-        z = params.copy()
-        z.update(scp.parse_config(configuration_file))
-        params = z
+        tmp = params.copy()
+        tmp.update(scp.parse_config(configuration_file))
+        params = tmp
 
         params['logs_type'] = [item.strip() for item in params['logs_type'].split(',')]
         if params['logs_hosts']:
@@ -96,9 +96,9 @@ def set_hosts_list():
 
     params['logs_hosts'] = []
 
-    hostsList = app.request.forms.getall('hostsList[]')
+    hosts_list = app.request.forms.getall('hostsList[]')
     logger.debug("[logs] Selected hosts : ")
-    for host in hostsList:
+    for host in hosts_list:
         logger.debug("[logs] - host : %s", host)
         params['logs_hosts'].append(host)
 
@@ -116,9 +116,9 @@ def set_services_list():
 
     params['logs_services'] = []
 
-    servicesList = app.request.forms.getall('servicesList[]')
+    services_list = app.request.forms.getall('servicesList[]')
     logger.debug("[logs] Selected services : ")
-    for service in servicesList:
+    for service in services_list:
         logger.debug("[logs] - service : %s", service)
         params['logs_services'].append(service)
 
@@ -136,9 +136,9 @@ def set_logs_type_list():
 
     params['logs_type'] = []
 
-    logs_typeList = app.request.forms.getall('logs_typeList[]')
+    logs_type_list = app.request.forms.getall('logs_typeList[]')
     logger.debug("[logs] Selected logs types : ")
-    for log_type in logs_typeList:
+    for log_type in logs_type_list:
         logger.debug("[logs] - log type : %s", log_type)
         params['logs_type'].append(log_type)
 
@@ -146,7 +146,7 @@ def set_logs_type_list():
 
 
 def get_history():
-    user = app.request.environ['USER']
+    user = app.get_user()
 
     filters = dict()
 
@@ -188,7 +188,7 @@ def get_history():
 
 # :TODO:maethor:171017: This function should be merge in get_history
 def get_global_history():
-    user = app.request.environ['USER']
+    user = app.get_user()
     _ = user.is_administrator() or app.redirect403()
 
     midnight_timestamp = time.mktime(datetime.date.today().timetuple())
