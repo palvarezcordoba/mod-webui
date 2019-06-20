@@ -24,7 +24,7 @@ script:
   # -- pylint
   - pylint --rcfile=.pylintrc -r no aligalignak_module_webuinak
   # -- pep257
-  - pep257 --select=D300 alignak_module_webui
+#  - pep257 --select=D300 alignak_module_webui
   # - nosetests -xv --process-restartworker --processes=1 --process-timeout=300 --with-coverage --cover-package=module test*.py
   # - coverage combine
   # - coverage report -m
