@@ -83,7 +83,7 @@
       %i=0
       %for group in hostgroups:
          %hosts = app.datamgr.search_hosts_and_services('type:host hg:'+group.get_name(), user)
-         %h = app.datamgr.get_hosts_synthesis(elts=hosts, user=user)
+         %h = app.datamgr.get_hosts_synthesis(items=hosts, user=user)
          %if (i % 6)==0:
          <tr data-row="{{i}}">
          %end

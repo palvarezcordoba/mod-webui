@@ -5,6 +5,7 @@ include requirements.txt
 recursive-exclude test *
 recursive-include etc *.*
 recursive-include doc *.*
+recursive-include share *.*
 recursive-include alignak_module_webui *.*
 global-exclude *.pyc
 global-exclude *.log

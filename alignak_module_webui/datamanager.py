@@ -138,9 +138,9 @@ class WebUIDataManager(object):
         logger.debug("Hosts count: %s / %s / %s", count, host['nb_problems'], host['nb_elts'])
         return round(100.0 * (count / host['nb_elts']), 1)
 
-    def get_hosts_synthesis(self, elts=None, user=None):
-        if elts is not None:
-            hosts = [item for item in elts if item.__class__.my_type == 'host']
+    def get_hosts_synthesis(self, items=None, user=None):
+        if items is not None:
+            hosts = [item for item in items if item.__class__.my_type == 'host']
         else:
             hosts = self.get_hosts(user=user)
         logger.debug("[datamanager] get_hosts_synthesis, %d hosts", len(hosts))
@@ -211,7 +211,7 @@ class WebUIDataManager(object):
         return host_synth
 
     def get_important_hosts_synthesis(self, user=None):
-        return self.get_hosts_synthesis(elts=self.get_important_hosts(user))
+        return self.get_hosts_synthesis(items=self.get_important_hosts(user))
 
     ##
     # Services
@@ -456,26 +456,26 @@ class WebUIDataManager(object):
             if (t in ['h', 'host']) and s.lower() != 'all':
                 logger.debug("[datamanager] searching for an host %s", s)
                 if template:
-                    logger.info("[datamanager] searching for an host template %s", s)
+                    logger.debug("[datamanager] searching for an host template %s", s)
                 # Case sensitive
                 pat = re.compile(s)
                 new_items = []
                 for i in templates if template else items:
-                    logger.info("[datamanager] item %s", i)
                     if i.__class__.my_type == 'host' and pat.search(i.get_name()):
                         new_items.append(i)
-                    if i.__class__.my_type == 'service':
-                        logger.info("[datamanager] host name: %s", i.get_host_name())
                     if i.__class__.my_type == 'service' and pat.search(i.get_host_name()):
                         new_items.append(i)
 
                 items = new_items
-                logger.debug("[datamanager] host:%s, %d matching items", s, len(items))
-                for item in items:
-                    logger.debug("[datamanager] item %s is %s", item.get_name(), item.__class__)
+                # Too verbose
+                # logger.debug("[datamanager] host:%s, %d matching items", s, len(items))
+                # for item in items:
+                #     logger.debug("[datamanager] item %s is %s", item.get_name(), item.__class__)
 
             if (t in ['s', 'service']) and s.lower() != 'all':
                 logger.debug("[datamanager] searching for a service %s", s)
+                if template:
+                    logger.debug("[datamanager] searching for a service template %s", s)
                 pat = re.compile(s)
                 new_items = []
                 for i in items:
@@ -483,9 +483,10 @@ class WebUIDataManager(object):
                         new_items.append(i)
 
                 items = new_items
-                logger.debug("[datamanager] service:%s, %d matching items", s, len(items))
-                for item in items:
-                    logger.debug("[datamanager] item %s is %s", item.get_name(), item.__class__)
+                # Too verbose
+                # logger.debug("[datamanager] service:%s, %d matching items", s, len(items))
+                # for item in items:
+                #     logger.debug("[datamanager] item %s is %s", item.get_name(), item.__class__)
 
             if (t in ['c', 'contact']) and s.lower() != 'all':
                 logger.debug("[datamanager] searching for a contact %s", s)

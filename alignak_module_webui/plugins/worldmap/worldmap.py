@@ -60,7 +60,10 @@ def load_config(the_app):
 
 
 def search_hosts_with_coordinates(search, user):
-    logger.debug("search parameters '%s'", search)
+    if "type:host" not in search:
+        search = "type:host " + search
+
+    logger.info("search parameters '%s'", search)
     hosts = app.datamgr.search_hosts_and_services(search, user)
 
     # We are looking for hosts with valid GPS coordinates,
@@ -69,7 +72,7 @@ def search_hosts_with_coordinates(search, user):
     # in the 'generic-host' template.
     valid_hosts = []
     for host in hosts:
-        logger.debug("found host '%s'", host.get_name())
+        logger.info("found host '%s'", host.get_name())
 
         if host.business_impact not in params['hosts_level']:
             continue

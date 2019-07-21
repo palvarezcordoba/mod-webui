@@ -43,9 +43,7 @@ import threading
 import imp
 import logging
 
-# Bottle import
-from bottle import request, response
-import bottle
+from collections import deque
 
 import requests
 

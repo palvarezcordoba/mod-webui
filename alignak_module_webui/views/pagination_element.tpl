@@ -1,7 +1,8 @@
 %try:
-    %from urllib.parse import urlparse, urlencode
+   %from urllib.parse import urlencode
 %except ImportError:
-    %from urllib import urlencode
+   %from urllib import urlencode
+%end
 
 %setdefault('display_steps_form', False)
 %setdefault('div_class', "pull-right")
@@ -47,8 +48,6 @@
     });
     $('#elts_per_page form').submit(function(e){
       var value = $('#elts_per_page input').val();
-      console.log("Submit: ", value);
-
       if (value == parseInt(value)) {
          // Update input field
          save_user_preference('elts_per_page', value);
@@ -62,8 +61,6 @@
     });
     $('#elts_per_page input').blur(function(e){
       var value = $('#elts_per_page input').val();
-      console.log("Blur: ", value);
-
       if (value == parseInt(value)) {
          // Update input field
          save_user_preference('elts_per_page', value);

@@ -131,7 +131,7 @@
          %end
 
          %hosts = app.datamgr.search_hosts_and_services('type:host hg:"'+group.get_name()+'"', user)
-         %h = app.datamgr.get_hosts_synthesis(hosts, user=user)
+         %h = app.datamgr.get_hosts_synthesis(items=hosts, user=user)
          %sub_groups = group.hostgroup_members
          %sub_groups = [] if (sub_groups and not sub_groups[0]) else sub_groups
 

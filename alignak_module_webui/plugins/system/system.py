@@ -422,6 +422,7 @@ def alignak_events():
 
     return {
         'navi': navi,
+        'elts_per_page': elts_per_page,
         'page': "alignak/events",
         'logs': items[start:end],
         'total': total,

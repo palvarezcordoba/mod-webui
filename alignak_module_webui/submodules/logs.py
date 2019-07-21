@@ -72,7 +72,7 @@ class MongoDBLogs(object):
                          'https://pypi.python.org/pypi/pymongo')
             return
 
-        self.database = getattr(mod_conf, 'database', 'shinken')
+        self.database = getattr(mod_conf, 'database', 'alignak')
         self.username = getattr(mod_conf, 'username', None)
         self.password = getattr(mod_conf, 'password', None)
         logger.info('[mongo-logs] database: %s, user: %s', self.database, self.username)
@@ -89,15 +89,15 @@ class MongoDBLogs(object):
         self.mongodb_fsync = getattr(mod_conf, 'mongodb_fsync', "True") == "True"
         self.is_connected = False
         self.con = None
-        self.database = None
+        self.db = None
 
         if not self.uri:
             logger.warning("[mongo-logs] No Mongodb connection configured!")
             return
 
         if self.uri:
-            logger.info("[mongo-logs] Trying to open a Mongodb connection to %s, database: %s",
-                        self.uri, self.database)
+            logger.info("[mongo-logs] Trying to open a Mongodb connection to %s, "
+                        "database: %s", self.uri, self.database)
             self.open()
         else:
             logger.warning("You do not have any MongoDB connection for log module installed. "
@@ -118,16 +118,16 @@ class MongoDBLogs(object):
                 self.con = MongoClient(self.uri, fsync=self.mongodb_fsync, connect=True)
             logger.info("[mongo-logs] connected to mongodb: %s", self.uri)
 
-            self.database = getattr(self.con, self.database)
+            self.db = getattr(self.con, self.database)
             logger.info("[mongo-logs] connected to the database: %s", self.database)
 
             if self.username and self.password:
-                self.database.authenticate(self.username, self.password)
+                self.db.authenticate(self.username, self.password)
                 logger.info("[mongo-logs] user authenticated: %s", self.username)
 
             # Check if the configured logs collection exist
-            logger.info("[mongo-logs] DB collections: %s", self.database.collection_names())
-            if self.logs_collection not in self.database.collection_names():
+            logger.info("[mongo-logs] DB collections: %s", self.db.collection_names())
+            if self.logs_collection not in self.db.collection_names():
                 logger.warning("[mongo-logs] configured logs collection '%s' "
                                "does not exist in the database", self.logs_collection)
             else:
@@ -152,7 +152,7 @@ class MongoDBLogs(object):
         if not self.uri:
             return None
 
-        if not self.database:
+        if not self.db:
             logger.error("[mongo-logs] error Problem during init phase, no database connection")
             return []
 
@@ -176,10 +176,10 @@ class MongoDBLogs(object):
         records = []
         try:
             if limit:
-                records = self.database[self.logs_collection].find(query).sort([
+                records = self.db[self.logs_collection].find(query).sort([
                     ("time", pymongo.DESCENDING)]).skip(offset).limit(limit)
             else:
-                records = self.database[self.logs_collection].find(query).sort([
+                records = self.db[self.logs_collection].find(query).sort([
                     ("time", pymongo.DESCENDING)]).skip(offset)
 
             logger.debug("[mongo-logs] %d records fetched from database.", records.count())
@@ -193,7 +193,7 @@ class MongoDBLogs(object):
         if not self.uri:
             return None
 
-        if not self.database:
+        if not self.db:
             logger.error("[mongo-logs] error Problem during init phase, no database connection")
             return []
 
@@ -212,7 +212,7 @@ class MongoDBLogs(object):
 
         records = []
         try:
-            for log in self.database[self.hav_collection].find(query).sort(
+            for log in self.db[self.hav_collection].find(query).sort(
                     [("day", pymongo.DESCENDING),
                      ("hostname", pymongo.ASCENDING),
                      ("service", pymongo.ASCENDING)]):

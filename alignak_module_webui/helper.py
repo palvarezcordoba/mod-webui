@@ -421,7 +421,6 @@ class Helper(object):
         step = float(step)
         nb_pages = math.ceil(total / step) if step != 0 else 0
         current_page = int(pos / step) if step != 0 else 0
-
         step = int(step)
 
         res = []

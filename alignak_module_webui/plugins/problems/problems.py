@@ -99,11 +99,11 @@ def get_all():
         'pbs': problems[start:end],
         'problems_search': (search == default_filtering),
         'all_pbs': items,
-        'navi': navi,
         'title': title,
         'bookmarks': app.prefs_module.get_user_bookmarks(user),
         'bookmarksro': app.prefs_module.get_common_bookmarks(),
         'sound': sound_pref,
+        'navi': navi,
         'elts_per_page': elts_per_page,
         'display_impacts': display_impacts
     }
