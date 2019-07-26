@@ -20,7 +20,7 @@
         %displayed_services=True
         <h4>My services:</h4>
         <div class="services-tree">
-          {{!helper.print_aggregation_tree(helper.get_host_service_aggregation_tree(elt), helper.get_html_id(elt), expanded=False, max_sons=3)}}
+          {{!helper.print_aggregation_tree(helper.get_host_service_aggregation_tree(elt), helper.get_html_id(elt), expanded=False)}}
         </div>
         %elif not elt.parent_dependencies:
         <h4>No services!</h4>

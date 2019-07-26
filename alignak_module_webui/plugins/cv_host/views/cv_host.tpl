@@ -454,7 +454,7 @@
       <div class="col-sm-6" name="right_metrics">
          %if 'services' in all_states:
          <div class="well well-sm services-tree" name="services_container">
-           {{!app.helper.print_aggregation_tree(app.helper.get_host_service_aggregation_tree(elt), app.helper.get_html_id(elt), expanded=True, max_sons=3)}}
+           {{!app.helper.print_aggregation_tree(app.helper.get_host_service_aggregation_tree(elt), app.helper.get_html_id(elt), expanded=True)}}
          </div>
          %end
       </div>
