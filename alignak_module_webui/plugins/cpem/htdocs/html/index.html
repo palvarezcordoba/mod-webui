@@ -1,0 +1,204 @@
+<!-- header -->
+<div class="row">
+    <div class="col-md-2">
+        <div class="right" style="font-size: 24px"><a href="/host/{{ cpe.id }}"> cpe{{ cpe.id }} </a></div>
+        <div class="right" style="font-size: 18px; ">{{cpe.model}}</div>
+
+        {{#if cpe.sn}}
+        <div id="cpe-sn" style="cursor: pointer; text-align: right" class="font-fixed"
+             style="font-size: 12px; text-align: right; color: #9E9E9E;">{{ cpe.sn }}
+        </div>
+        {{/if}}
+
+        {{#if cpe.mac}}
+        <div id="cpe-mac" style="cursor: pointer; text-align: right" class="font-fixed"
+             style="font-size: 12px; text-align: right; color: #9E9E9E;">{{ cpe.mac }}
+        </div>
+        {{/if}}
+
+        {{#if cpe.notes}}
+        <div id="cpe-notes" style="cursor: pointer; text-align: right" class="font-fixed"
+             style="font-size: 12px; text-align: right; color: #9E9E9E;">{{ cpe.notes }}
+        </div>
+        {{/if}}
+
+    </div>
+
+    <div class="col-md-6" style="border-left: 1px solid gray">
+        <div style="font-size: 22px">{{ customer.name }} {{cpe.surname }}</div>
+        <div style="font-size: 18px; color: #666; white-space:normal;">
+            <a href="/cpe/{{ cpe.cpe_registration_host }}" data-type="registration-host">
+                {{ cpe.cpe_registration_host }}
+            </a>
+            <span>
+                <span data-type="registration-host-state"></span>
+                <span>/</span>
+                <a href="/all?search=type:host {{cpe.cpe_registration_id}}" data-type="registration-id">
+                    {{ cpe.cpe_registration_id }}</a>
+                <span>:</span>
+                <span id="registration_state"></span>
+                <i class="fa fa-spinner fa-spin"></i>
+            </span>
+        </div>
+        <div style="font-size: 18px; color: #333;" id="ips">
+            {{#if poll}}
+            {{#each poll.ips}}
+            <a target="_blank" href="http://{{ this }}.{{ location.hostname }}">{{ this }}</a>
+            {{/each}}
+            {{/if}}
+        </div>
+        <div style="font-size: 18px; color: #999;">
+            {{#if cpe.active}}:
+            <span style="color: #64DD17" alt="Enabled Internet access" title="CPE Enabled"><i
+                    class="fa fa-thumbs-up"></i></span>
+            {{#if cpe.access }}
+            <span style="color: #64DD17" alt="Enabled Internet access" title="Enabled Internet access"><i
+                    class="fa fa-globe"></i><!--Internet access--></span>
+            {{else}}
+            <span style="color: #E65100" alt="Disabled Internet access" title="Disabled Internet access"><i
+                    class="fa fa-globe text-danger"></i><!--Disabled Internet access--></span>
+            {{/if}}
+            {{else}}
+            <span style="color: #E65100" alt="Disabled Internet access" title="CPE disabled"><i
+                    class="fa fa-thumbs-down text-danger"></i><!--Disabled Internet access--></span>
+            {{/if}}
+
+            <span style="color: #9E9E9E"><i class="fa fa-arrow-circle-o-down"></i>{{profile.downstream}}</span>
+            <span style="color: #9E9E9E"><i class="fa fa-arrow-circle-o-up"></i>{{profile.upstream}}</span>
+            {{#each cpe.potses}}
+            {{#if this.cli}}
+            | <span style="color: #607D8B">{{ this.order }}<i class="fa fa-phone" aria-hidden="true"></i> {{ this.cli }}</span>
+            {{/if}}
+            {{/each}}
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="btn-group pull-right" role="group">
+            {{#each cpe._links.actions}}
+            {{#when @key 'noteq' 'info'}}
+            <button data-action="{{ this }}" id="btn-{{@key}}" type="button" class="btn btn-default">
+                <i class="fa" aria-hidden="true"></i>&nbsp; {{@key}}
+            </button>
+            {{/when}}
+            {{/each}}
+        </div>
+    </div>
+
+</div>
+
+
+<div clas="row">
+    <!-- timeline -->
+    <div class="row">
+        <div class="col-md-6" id="timeline"></div>
+        <div class="col-md-6" id="quickservices"></div>
+    </div>
+
+    <!-- realtime -->
+    <div class="col-md-12 panel panel-default">
+        <div class="panel-heading">
+
+            <div class="pull-right">
+                <span>Summary: </span>
+                <span class="fa fa-calendar"></span> <span id="uptime" alt="Uptime">-</span></span>
+                <span class="fa fa-dashboard"></span> <span id="dnbw" alt="Down Bandwidth">-</span>/<span
+                    id="upbw">-</span>
+                <span class="fa fa-signal"></span> <span id="uprx" alt="Up Bandwidth">-</span>/<span id="dnrx">-</span>dbm
+                <span class="fa fa-signal"></span> <span id="ccq">-</span>dbm
+                <span class="fa fa-reorder"></span> <span id="service_ports"></span>
+                <span>&nbsp;</span>
+            </div>
+
+            <h4 class="panel-title">Realtime</h4>
+
+        </div> <!-- .panel-heading -->
+
+        <div id="realtime" class="panel-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div id="plot_bw" style="width: 100%; height: 120px;"></div>
+                </div>
+
+                <div class="col-md-4">
+                    <div id="plot_rx" style="width: 100%; height: 120px;"></div>
+                </div>
+
+                <div class="col-md-4">
+                    <div id="plot_ccq" style="width: 100%; height: 120px;"></div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6" id="docsisDownstreamTable"></div>
+                <div class="col-md-6" id="docsisUpstreamTable"></div>
+            </div>
+        </div>
+
+        <div> <!-- .panel-body -->
+
+
+        </div> <!-- .panel -->
+    </div> <!-- .row -->
+
+
+    <!-- history -->
+    <div class="row container-fluid clearfix">
+        <div class="col-md-12 panel panel-default">
+            <div class="panel-heading">
+                <div class="pull-right">
+                    <a class="btn btn-primary btn-xs" data-toggle="collapse" href="#logHistory">+</a>
+                </div>
+                <h4 class="panel-title">Log History</h4>
+            </div>
+            <div id="logHistory" class="panel-body panel-collapse collapse">
+                <table id="inner_history" class="table" data-element='{{ cpe.id }}'>
+                    <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Time</th>
+                        <th>Service</th>
+                        <th>Message</th>
+                    </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="row container-fluid clearfix">
+        <div class="col-md-12 panel panel-default">
+            <div class="panel-heading">
+                <div class="pull-right">
+                    <a class="btn btn-primary btn-xs" data-toggle="collapse" href="#eventHistory">+</a>
+                </div>
+                <h4 class="panel-title">Event History</h4>
+            </div>
+            <div id="eventHistory" class="panel-body panel-collapse collapse">
+                <table id="inner_events" class="table" data-element='{{ cpe.id }}'>
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Source</th>
+                        <th>Message</th>
+                    </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- graphs -->
+    <div class="row container-fluid">
+        {{#each cpe.graphs}}
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4 class="panel-title">{{item.title}}</h4></div>
+                <div class="panel-body">
+                    <div id="{{item.title}}_dashboard">
+                        <div id="{{item.title}}_chart" class="dashboard-chart"></div>
+                        <div id="{{item.title}}_control" class="dashboard-control"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>

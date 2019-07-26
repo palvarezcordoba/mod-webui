@@ -24,70 +24,65 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Shinken.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-import json
 import time
 import datetime
+import re
 
-from config_parser import ConfigParser
+import json
+import urllib
 
-# Specific logger configuration
-import logging
-from alignak.log import ALIGNAK_LOGGER_NAME
-logger = logging.getLogger(ALIGNAK_LOGGER_NAME + ".webui")
+from alignak.log import logger
+
+### Will be populated by the UI with it's own value
+app = None
 
 # Get plugin's parameters from configuration file
-params = {
-    'logs_type': ['INFO', 'WARNING', 'ERROR'],
-    'logs_hosts': [],
-    'logs_services': []
-}
-
-# Will be populated by the UI with it's own value
-app = None
+params = {}
+params['logs_type'] = ['INFO', 'WARNING', 'ERROR']
+params['logs_hosts'] = []
+params['logs_services'] = []
 
 
 def _get_logs(*args, **kwargs):
     if app.logs_module.is_available():
         return app.logs_module.get_ui_logs(*args, **kwargs)
+    else:
+        logger.warning("[WebUI-logs] no get history external module defined!")
+        return None
 
-    logger.warning("[logs] no get history external module defined!")
-    return None
 
-
-# pylint: disable=global-statement,unused-argument
-def load_config(the_app):
+def load_config(app):
     global params
 
-    currentdir = os.path.dirname(os.path.realpath(__file__))
-    configuration_file = "%s/%s" % (currentdir, 'plugin.cfg')
-    logger.info("[logs] Plugin configuration file: %s", configuration_file)
+    import os
+    from alignak_module_webui.config_parser import ConfigParser
     try:
-        scp = ConfigParser('#', '=')
-        tmp = params.copy()
-        tmp.update(scp.parse_config(configuration_file))
-        params = tmp
+        currentdir = os.path.dirname(os.path.realpath(__file__))
+        configuration_file = "%s/%s" % (currentdir, 'plugin.cfg')
+        logger.info("[WebUI-logs] Plugin configuration file: %s", configuration_file)
+
+        z = params.copy()
+        z.update(ConfigParser().parse_config(configuration_file))
+        params = z
 
         params['logs_type'] = [item.strip() for item in params['logs_type'].split(',')]
-        if params['logs_hosts']:
+        if len(params['logs_hosts']) > 0:
             params['logs_hosts'] = [item.strip() for item in params['logs_hosts'].split(',')]
-        if params['logs_services']:
+        if len(params['logs_services']) > 0:
             params['logs_services'] = [item.strip() for item in params['logs_services'].split(',')]
 
-        logger.info("[logs] configuration loaded.")
-        logger.info("[logs] configuration, fetching types: %s", params['logs_type'])
-        logger.info("[logs] configuration, hosts: %s", params['logs_hosts'])
-        logger.info("[logs] configuration, services: %s", params['logs_services'])
+        logger.info("[WebUI-logs] configuration loaded.")
+        logger.info("[WebUI-logs] configuration, fetching types: %s", params['logs_type'])
+        logger.info("[WebUI-logs] configuration, hosts: %s", params['logs_hosts'])
+        logger.info("[WebUI-logs] configuration, services: %s", params['logs_services'])
         return True
     except Exception as exp:
-        logger.warning("[logs] configuration file (%s) not available: %s",
-                       configuration_file, str(exp))
+        logger.warning("[WebUI-logs] configuration file (%s) not available: %s", configuration_file, str(exp))
         return False
 
 
 def form_hosts_list():
     return {'params': params}
-
 
 def set_hosts_list():
     # Form cancel
@@ -96,18 +91,17 @@ def set_hosts_list():
 
     params['logs_hosts'] = []
 
-    hosts_list = app.request.forms.getall('hostsList[]')
-    logger.debug("[logs] Selected hosts : ")
-    for host in hosts_list:
-        logger.debug("[logs] - host : %s", host)
+    hostsList = app.request.forms.getall('hostsList[]')
+    logger.debug("[WebUI-logs] Selected hosts : ")
+    for host in hostsList:
+        logger.debug("[WebUI-logs] - host : %s" % (host))
         params['logs_hosts'].append(host)
 
     app.bottle.redirect("/logs")
-
+    return
 
 def form_services_list():
     return {'params': params}
-
 
 def set_services_list():
     # Form cancel
@@ -116,18 +110,17 @@ def set_services_list():
 
     params['logs_services'] = []
 
-    services_list = app.request.forms.getall('servicesList[]')
-    logger.debug("[logs] Selected services : ")
-    for service in services_list:
-        logger.debug("[logs] - service : %s", service)
+    servicesList = app.request.forms.getall('servicesList[]')
+    logger.debug("[WebUI-logs] Selected services : ")
+    for service in servicesList:
+        logger.debug("[WebUI-logs] - service : %s" % (service))
         params['logs_services'].append(service)
 
     app.bottle.redirect("/logs")
-
+    return
 
 def form_logs_type_list():
     return {'params': params}
-
 
 def set_logs_type_list():
     # Form cancel
@@ -136,30 +129,30 @@ def set_logs_type_list():
 
     params['logs_type'] = []
 
-    logs_type_list = app.request.forms.getall('logs_typeList[]')
-    logger.debug("[logs] Selected logs types : ")
-    for log_type in logs_type_list:
-        logger.debug("[logs] - log type : %s", log_type)
+    logs_typeList = app.request.forms.getall('logs_typeList[]')
+    logger.debug("[WebUI-logs] Selected logs types : ")
+    for log_type in logs_typeList:
+        logger.debug("[WebUI-logs] - log type : %s" % (log_type))
         params['logs_type'].append(log_type)
 
     app.bottle.redirect("/logs")
-
+    return
 
 def get_history():
-    user = app.get_user()
+    user = app.request.environ['USER']
 
-    filters = dict()
+    filters=dict()
 
     service = app.request.GET.get('service', None)
     host = app.request.GET.get('host', None)
 
     if host:
         if service:
-            _ = app.datamgr.get_element(host + '/' + service, user) or app.redirect404()
+            app.datamgr.get_element(host + '/' + service, user) or app.redirect404()
         else:
-            _ = app.datamgr.get_element(host, user) or app.redirect404()
+            app.datamgr.get_element(host, user) or app.redirect404()
     else:
-        _ = user.is_administrator() or app.redirect403()
+        user.is_administrator() or app.redirect403()
 
     if service:
         filters['service_description'] = service
@@ -175,7 +168,7 @@ def get_history():
     if command_name is not None:
         try:
             command_name = json.loads(command_name)
-        except Exception:
+        except:
             pass
         filters['command_name'] = command_name
 
@@ -188,66 +181,97 @@ def get_history():
 
 # :TODO:maethor:171017: This function should be merge in get_history
 def get_global_history():
-    user = app.get_user()
-    _ = user.is_administrator() or app.redirect403()
+    user = app.request.environ['USER']
+    user.is_administrator() or app.redirect403()
 
     midnight_timestamp = time.mktime(datetime.date.today().timetuple())
     range_start = int(app.request.GET.get('range_start', midnight_timestamp))
     range_end = int(app.request.GET.get('range_end', midnight_timestamp + 86399))
-    logger.debug("[logs] get_global_history, range: %d - %d", range_start, range_end)
+    logger.debug("[WebUI-logs] get_global_history, range: %d - %d", range_start, range_end)
 
-    logs = _get_logs(filters={'type': {'$in': params['logs_type']}},
-                     range_start=range_start, range_end=range_end)
+    logs = _get_logs(filters={'type': {'$in': params['logs_type']}}, range_start=range_start, range_end=range_end)
 
     if logs is None:
         message = "No module configured to get Shinken logs from database!"
     else:
         message = ""
 
-    return {
-        'records': logs,
-        'params': params,
-        'message': message,
-        'range_start': range_start, 'range_end': range_end
-    }
+    return {'records': logs, 'params': params, 'message': message, 'range_start': range_start, 'range_end': range_end}
+
+
+
+
+
+def _get_events(elt):
+    if app.logs_module.is_available():
+        return app.logs_module.get_ui_events(elt)
+    else:
+        logger.warning("[WebUI-logs] no get history external module defined!")
+        return None
+
+def get_host_logs(name):
+    user = app.request.environ['USER']
+    name = urllib.unquote(name)
+    elt = app.datamgr.get_element(name, user) or app.redirect404()
+    logs = _get_logs(filters=dict(host_name=elt.host_name))
+
+    records = []
+    for log in logs:
+        message = log['message']
+        m = re.search(r"\[(\d+)\] (.*)", message)
+        if m and m.group(2):
+            message = m.group(2)
+
+        records.append({
+            "timestamp":    int(log["time"]),
+            "host":         log['host_name'],
+            "service":      log['service_description'],
+            "message":      message,
+            "state":        log['state'],
+            "state_type":   log['state_type'],
+            "type":         log['type']
+        })
+
+    return json.dumps(records)
+
+def get_host_events(name):
+    user = app.request.environ['USER']
+    name = urllib.unquote(name)
+    elt = app.datamgr.get_element(name, user) or app.redirect404()
+    events = _get_events(elt)
+    return json.dumps(events)
+
 
 
 pages = {
     get_global_history: {
-        'name': 'History', 'route': '/logs',
-        'view': 'logs',
-        'static': True
+        'name': 'History', 'route': '/logs', 'view': 'logs', 'static': True
     },
     get_history: {
-        'name': 'HistoryHost', 'route': '/logs/inner',
-        'view': 'history',
-        'static': True
+        'name': 'HistoryHost', 'route': '/logs/inner', 'view': 'history'
     },
     form_hosts_list: {
-        'name': 'GetHostsList', 'route': '/logs/hosts_list',
-        'view': 'form_hosts_list',
-        'static': True
+        'name': 'GetHostsList', 'route': '/logs/hosts_list', 'view': 'form_hosts_list'
     },
     set_hosts_list: {
-        'name': 'SetHostsList', 'route': '/logs/set_hosts_list',
-        'view': 'logs', 'method': 'POST'
+        'name': 'SetHostsList', 'route': '/logs/set_hosts_list', 'view': 'logs', 'method': 'POST'
     },
     form_services_list: {
-        'name': 'GetServicesList', 'route': '/logs/services_list',
-        'view': 'form_services_list',
-        'static': True
+        'name': 'GetServicesList', 'route': '/logs/services_list', 'view': 'form_services_list'
     },
     set_services_list: {
-        'name': 'SetServicesList', 'route': '/logs/set_services_list',
-        'view': 'logs', 'method': 'POST'
+        'name': 'SetServicesList', 'route': '/logs/set_services_list', 'view': 'logs', 'method': 'POST'
     },
     form_logs_type_list: {
-        'name': 'GetLogsTypeList', 'route': '/logs/logs_type_list',
-        'view': 'form_logs_type_list',
-        'static': True
+        'name': 'GetLogsTypeList', 'route': '/logs/logs_type_list', 'view': 'form_logs_type_list'
     },
     set_logs_type_list: {
-        'name': 'SetLogsTypeList', 'route': '/logs/set_logs_type_list',
-        'view': 'logs', 'method': 'POST'
+        'name': 'SetLogsTypeList', 'route': '/logs/set_logs_type_list', 'view': 'logs', 'method': 'POST'
+    },
+    get_host_logs: {
+        'name': 'GetHostLogs', 'route': '/logs/host/<name:path>'
+    },
+    get_host_events: {
+        'name': 'GetHostEvents', 'route': '/events/host/<name:path>'
     }
 }
